@@ -1,0 +1,57 @@
+type: model
+authority-id: vvzRyapv3TqUvy1N6jXyPUsmQU4bloGH
+series: 16
+brand-id: vvzRyapv3TqUvy1N6jXyPUsmQU4bloGH
+model: ubuntu-core-24-amd64
+architecture: amd64
+base: core24
+grade: dangerous
+snaps:
+  -
+    default-channel: 24/stable
+    id: UqFziVZDHLSyO3TqSWgNBoAdHbLI4dAH
+    name: pc
+    type: gadget
+  -
+    default-channel: 24/stable
+    id: pYVQrBcKmBa0mZ4CCN7ExT6jH8rY1hza
+    name: pc-kernel
+    type: kernel
+  -
+    default-channel: latest/stable
+    id: dwTAh7MZZ01zyriOZErqd1JynQLiOGvM
+    name: core24
+    type: base
+  -
+    default-channel: latest/stable
+    id: PMrrV4ml8uWuEUDBT8dSGnKUYbevVhc4
+    name: snapd
+    type: snapd
+  -
+    default-channel: 24/stable
+    id: ASctKBEHzVt3f1pbZLoekCvcigRjtuqw
+    name: console-conf
+    type: app
+  -
+    default-channel: 1.32-strict/stable
+    id: EaXqgt1lyCaxKaQCU349mlodBkDCXRcg
+    name: microk8s
+    type: app
+  -
+    default-channel: latest/stable
+    id: DLqre5XGLbDqg9jPtiAhRRjDuPVa5X1q
+    name: core20
+    type: base
+timestamp: 2025-03-16T12:52:31+00:00
+sign-key-sha3-384: WSg--zOGTQHGudeJtGDL2BPPlTh1hDxuzu7Mvw_yG7TnWOz1HK57PDAHTRLLaQ2j
+
+AcLBcwQAAQoAHRYhBH4XBtcxQ35IaOwY3OdDDJbMPilqBQJn2FJhAAoJEOdDDJbMPilqs+4QAL9D
+LXQ7olT/L/SPIs3350T7lj0u71I1npDXHyEWTg6KCYGObUxVCWoYS+ANwbz8ymANWBI2aXpw/PtA
+TrMiN6M+1N3CaTJ2O98cyOu+hSslHBGxOrIHg5+ZhOp79duujbwqBlUeocEN/Eb9Jg7G4VSsslKw
+HS+7FSHa82R02atHgQc+4wXVZEixNaemNGqN92YPJGMLsm4GuJ+BeWY/GgjCQvxyLsUTTOly24lK
+sXmJVLhjnpCXiAr6HwqYWTB50kD5JoUqoFkmXGFOTNehCpnqYbdEKDHRFqWn3cEmWFuikx7Ak4GF
+34uJCfbbfVsD6wqIjc4l+vgwZZAigiYN7LmYQXXzsMNdhr+w+5q/29ybiOkf0QCDEW5+5VvqX4m8
+C29FFbT+dubsn104Y3spseSbAQevKRJGKQLhn6tHn/7gZozbGVu48MsF11o5D8E3SXdCvZphrZ68
+cUy03XKJciSpW6Uo5rTb3wJwo9FzxpqhXlk3QNfV/C+h23yYb72qI2+V+AUhfh2SOozW1AnWpCFY
+ZDTDMqMW9sFbgF/mTRNNzt+cYLmwym56LxFnTh4LpmqHC+JPCL/mveOOmoPt7lCFsVwXK5w5OvPh
+RpQZ0MVmIReZvZmQqAd7RWBwzeL5B7cxSFU/wQxxDbjxSBffjqrHHdRdPVOlmJWW+XWUxeHa

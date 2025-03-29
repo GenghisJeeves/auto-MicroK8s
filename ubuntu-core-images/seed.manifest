@@ -1,0 +1,8 @@
+console-conf 50
+core20 2496
+core24 739
+microk8s 7750
+pc 196
+pc-kernel 2247
+qemu-guest-agent x1
+snapd 23771

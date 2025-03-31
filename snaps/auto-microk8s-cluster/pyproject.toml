@@ -1,0 +1,30 @@
+[project]
+readme = "README.md"   
+requires-python = ">=3.12"
+name = "auto-microk8s-cluster"
+dependencies = [
+]
+license = "GPL-3.0-or-later"
+dynamic = ["classifiers"]
+
+[tool.poetry]
+packages = [{include = "auto_microk8s_cluster", from = "src"}]
+
+version = "0.1.0"
+description = "Automatically discover neighbours and configure a microk8s cluster"
+authors = [
+    "Genghis Jeeves <auto-microk8s@omni-fi.net>"
+]
+name = "auto-microk8s-cluster"
+
+
+[tool.poetry.group.dev.dependencies]
+sphinx = "^8.2.3"
+sphinx-autodoc-typehints = "^3.1.0"
+
+[project.scripts]
+auto-microk8s-cluster = "auto_microk8s_cluster.service:main"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

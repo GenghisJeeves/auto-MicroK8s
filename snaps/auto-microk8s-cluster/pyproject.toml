@@ -3,6 +3,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 name = "auto-microk8s-cluster"
 dependencies = [
+    "python-systemd (>=0.0.9,<0.0.10)"
 ]
 license = "GPL-3.0-or-later"
 dynamic = ["classifiers"]

@@ -12,7 +12,7 @@ description: |
   - accessing guest files
   - freezing/thawing guest filesystem operations
   - others.
-  
+
   Install this package on a system which is running as guest inside
   qemu virtual machine.  It is not used on the host.
 confinement: devmode
@@ -29,42 +29,41 @@ parts:
       - --disable-docs
     build-packages:
       - ninja-build
-      - git 
-      - libglib2.0-dev 
-      - libfdt-dev 
+      - git
+      - libglib2.0-dev
+      - libfdt-dev
       - libpixman-1-dev
       - zlib1g-dev
-      - ninja-build
       - git-email
-      - libaio-dev
-      - libbluetooth-dev
+      - libaio-devv
+      - libbluetooth-devth-dev
       - libcapstone-dev
       - libbrlapi-dev
       - libbz2-dev
-      - libcap-ng-dev
-      - libcurl4-gnutls-dev
+      - libcap-ng-devdev
+      - libcurl4-gnutls-devls-dev
       - libgtk-3-dev
-      - libibverbs-dev
+      - libibverbs-devev
       - libjpeg8-dev
-      - libncurses5-dev
+      - libncurses5-devdev
       - libnuma-dev
       - librbd-dev
-      - librdmacm-dev
+      - librdmacm-devdev
       - libsasl2-dev
       - libsdl2-dev
-      - libseccomp-dev
+      - libseccomp-devdev
       - libsnappy-dev
       - libssh-dev
       - libvde-dev
-      - libvdeplug-dev
-      - libvte-2.91-dev
+      - libvdeplug-dev-dev
+      - libvte-2.91-devv
       - libxen-dev
-      - liblzo2-dev
+      - liblzo2-devv
       - valgrind
-      - xfslibs-dev 
+      - xfslibs-devdev
       - libnfs-dev
-      - libiscsi-dev
-      
+      - libiscsi-devev
+
 apps:
   qemu-guest-agent:
     command: usr/local/bin/qemu-ga

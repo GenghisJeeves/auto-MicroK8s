@@ -310,17 +310,6 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
-name = "python-systemd"
-version = "0.0.9"
-description = "Systemd interfaces wrapper"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "python-systemd-0.0.9.tar.gz", hash = "sha256:c01352a24518a6d89f90ceb94e384b0ef0385ea5b3b2d6963f8262d9c00f2fc7"},
-]
-
-[[package]]
 name = "requests"
 version = "2.32.3"
 description = "Python HTTP for Humans."
@@ -546,4 +535,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "42dc3bb73e5e066542e2320d44736a4fbf82942f6fa5007429cdc4bb77278cce"
+content-hash = "81ceab26865a665eff9bc7abee89d1f1f51160bfcfbdd8bcf109116ba626a015"

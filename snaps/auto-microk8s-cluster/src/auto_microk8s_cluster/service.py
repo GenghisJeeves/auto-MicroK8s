@@ -1,8 +1,22 @@
+import argparse
 import logging
 import time
 
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "-log",
+    "--loglevel",
+    default="warning",
+    help="Provide logging level. Example --loglevel debug, default=warning",
+)
+
+args = parser.parse_args()
+
+
 # Configure logging
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=args.loglevel.upper())
+logger.info("Logging now setup.")
 
 
 def main():

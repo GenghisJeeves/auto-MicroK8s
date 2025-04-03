@@ -13,7 +13,7 @@ parts:
   auto-microk8s-cluster:
     plugin: poetry
     source: .
-    source-type: git
+    source-type: local
     build-packages:
       - python3-dev
       - python3-pip

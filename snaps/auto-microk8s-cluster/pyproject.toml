@@ -21,8 +21,16 @@ name = "auto-microk8s-cluster"
 sphinx = "^8.2.3"
 sphinx-autodoc-typehints = "^3.1.0"
 
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
+
+[tool.poetry.dependencies]
+pydantic = "^2.11.2"
+pydantic-settings = "^2.8.1"
+
 [project.scripts]
 auto-microk8s-cluster = "auto_microk8s_cluster.service:main"
+configure = "snap.hooks.configure:main"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

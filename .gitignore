@@ -399,5 +399,8 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
+# Environment variable files
+.env
+
 # Distribution folder
 dist/

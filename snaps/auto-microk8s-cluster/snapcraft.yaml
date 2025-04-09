@@ -11,7 +11,7 @@ base: core24
 
 parts:
   auto-microk8s-cluster:
-    plugin: poetry
+    plugin: python
     source: .
     source-type: local
     build-packages:
@@ -24,5 +24,5 @@ parts:
 
 apps:
   auto-microk8s-cluster:
-    command: auto-microk8s-cluster
+    command: bin/auto-microk8s-cluster
     daemon: simple

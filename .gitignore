@@ -404,3 +404,6 @@ FodyWeavers.xsd
 
 # Distribution folder
 dist/
+
+# Snaps
+*.snap

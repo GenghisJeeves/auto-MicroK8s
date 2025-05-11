@@ -1,7 +1,7 @@
 import os
 from typing import Literal
 
-from pydantic import BaseModel, PositiveInt, ValidationError
+from pydantic import ValidationError
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,

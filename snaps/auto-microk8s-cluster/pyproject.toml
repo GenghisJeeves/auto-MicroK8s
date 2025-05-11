@@ -1,37 +1,114 @@
 [project]
-readme = "README.md"   
-requires-python = ">=3.12"
+readme = "README.md"
 name = "auto-microk8s-cluster"
 
-license = "GPL-3.0-or-later"
+license = "EUPL-1.2"
 dynamic = ["classifiers"]
-
-[tool.poetry]
-packages = [{include = "auto_microk8s_cluster", from = "src"}]
-
 version = "0.1.0"
 description = "Automatically discover neighbours and configure a microk8s cluster"
-authors = [
-    "Genghis Jeeves <auto-microk8s@omni-fi.net>"
-]
-name = "auto-microk8s-cluster"
+authors = [{ name = "Genghis Jeeves", email = "auto-microk8s@omni-fi.net" }]
 
+requires-python = ">=3.12"
 
-[tool.poetry.group.dev.dependencies]
-sphinx = "^8.2.3"
-sphinx-autodoc-typehints = "^3.1.0"
+dependencies = ["pydantic>=2.0.0", "pydantic-settings>=2.0.0"]
 
-[tool.poetry.requires-plugins]
-poetry-plugin-export = ">=1.8"
-
-[tool.poetry.dependencies]
-pydantic = "^2.11.2"
-pydantic-settings = "^2.8.1"
 
 [project.scripts]
 auto-microk8s-cluster = "auto_microk8s_cluster.service:main"
 configure = "snap.hooks.configure:main"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core>2.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry.group.dev.dependencies]
+black = ">=24"
+isort = ">=5"
+flake8 = ">=7"
+mypy = ">=1"
+pytest = ">=8"
+sphinx = ">=8"
+sphinx-autodoc-typehints = ">=3"
+pytest-cov = ">=6"
+
+# Enhanced Pyright configuration
+[tool.pyright]
+exclude = [
+    "**/migrations",
+    "**/*.pyc",
+    ".venv",
+    ".git",
+    "node_modules",
+    "**/typings",
+]
+reportMissingImports = true
+reportMissingTypeStubs = true
+typeCheckingMode = "standard" # Enable type checking
+pythonVersion = "3.12"
+reportUnusedImport = true
+reportUnusedVariable = true
+reportDuplicateImport = true
+reportOptionalSubscript = true
+reportOptionalMemberAccess = true
+reportOptionalCall = true
+reportOptionalIterable = true
+reportOptionalContextManager = true
+reportUntypedFunctionDecorator = true
+reportMissingTypeArgument = "warning"
+reportPrivateUsage = "warning"
+
+# Black formatting configuration
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs
+    | \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | migrations
+  )/
+)
+'''
+
+# isort configuration (compatible with Black)
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+line_length = 88
+skip = ["migrations"]
+
+# mypy configuration
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+plugins = ["mypy_django_plugin.main"]
+
+[[tool.mypy.overrides]]
+module = "migrations.*"
+ignore_errors = true

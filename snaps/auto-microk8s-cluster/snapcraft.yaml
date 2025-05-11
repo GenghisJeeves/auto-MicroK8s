@@ -26,3 +26,5 @@ apps:
   auto-microk8s-cluster:
     command: bin/auto-microk8s-cluster
     daemon: simple
+    restart-condition: always
+    restart-delay: "5m"

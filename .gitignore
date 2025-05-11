@@ -405,5 +405,8 @@ FodyWeavers.xsd
 # Distribution folder
 dist/
 
-# Snaps
+# Build output
 *.snap
+*.img
+*.iso
+*.dmg

@@ -1,6 +1,14 @@
 import argparse
+import json
 import logging
+import socket
+import threading
 import time
+from datetime import datetime, timedelta
+from ipaddress import IPv4Address, IPv6Address, ip_address
+from typing import Any
+
+from flask import Flask, jsonify
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -9,25 +17,174 @@ parser.add_argument(
     default="info",
     help="Provide logging level. Example --loglevel debug, default=warning",
 )
+parser.add_argument(
+    "--port",
+    default=8800,
+    type=int,
+    help="Port to run the web service on, default=8800",
+)
+parser.add_argument(
+    "--discovery-port",
+    default=8801,
+    type=int,
+    help="Port for discovery broadcasts, default=8801",
+)
 
 args = parser.parse_args()
-
 
 # Configure logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=args.loglevel.upper())
 logger.info("Logging now setup.")
 
+# Create Flask app
+app = Flask(__name__)
+
+
+# Store discovered neighbors
+neighbors: dict[IPv4Address | IPv6Address, dict[str, Any]] = {}
+neighbors_lock = threading.Lock()
+
+
+# Get local IP address
+def get_local_ip():
+    try:
+        # Create a temporary socket to determine our IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("google.com", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip_address(ip)
+    except Exception as e:
+        logger.error(f"Error getting local IP: {e}")
+        return ip_address("127.0.0.1")
+
+
+LOCAL_IP = get_local_ip()
+BROADCAST_INTERVAL = 30  # seconds
+NODE_TIMEOUT = 90  # seconds
+
+
+# Discovery service
+def send_discovery_broadcast():
+    """Send periodic UDP broadcasts to announce this service's presence"""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        while True:
+            try:
+                message = json.dumps(
+                    {
+                        "ip": str(LOCAL_IP),  # Convert to string for JSON
+                        "port": args.port,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+                sock.sendto(message.encode(), ("<broadcast>", args.discovery_port))
+                logger.debug(f"Sent discovery broadcast from {LOCAL_IP}:{args.port}")
+            except Exception as e:
+                logger.error(f"Error sending discovery broadcast: {e}")
+
+            time.sleep(BROADCAST_INTERVAL)
+
+
+def listen_for_broadcasts():
+    """Listen for broadcasts from other services"""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("", args.discovery_port))
+
+        while True:
+            try:
+                data, addr = sock.recvfrom(1024)
+                sender_ip = ip_address(addr[0])  # Convert to ip_address object
+
+                # Skip our own broadcasts
+                if sender_ip == LOCAL_IP:
+                    continue
+
+                info = json.loads(data.decode())
+                with neighbors_lock:
+                    neighbors[sender_ip] = {
+                        "ip": sender_ip,
+                        "port": info.get("port", args.port),
+                        "last_seen": datetime.now(),
+                    }
+                logger.info(f"Discovered neighbor at {sender_ip}")
+            except Exception as e:
+                logger.error(f"Error receiving discovery broadcast: {e}")
+
+
+def cleanup_neighbors():
+    """Remove stale neighbors"""
+    while True:
+        time.sleep(10)
+        stale = [
+            ip
+            # type: list[ip_address]
+            for ip, data in neighbors.items()
+            if datetime.now() - data["last_seen"] > timedelta(seconds=NODE_TIMEOUT)
+        ]
+        for ip in stale:
+            logger.info(f"Removing stale neighbor: {ip}")
+            del neighbors[ip]
+
+
+# Web Service Routes
+@app.route("/")
+def home():
+    return jsonify(
+        {
+            "service": "Auto MicroK8s Cluster",
+            "status": "running",
+            "ip": str(LOCAL_IP),  # Convert to string for JSON
+            "port": args.port,
+        }
+    )
+
+
+@app.route("/neighbors")
+def list_neighbors():
+    with neighbors_lock:
+        active_neighbors: dict[str, dict[str, str | int]] = {
+            str(ip): {  # Convert ip_address key to string for JSON
+                "ip": str(data["ip"]),  # Convert ip_address to string for JSON
+                "port": data["port"],
+                "last_seen": data["last_seen"].isoformat(),
+            }
+            for ip, data in neighbors.items()
+        }
+
+    return jsonify(
+        {
+            "this_node": {"ip": str(LOCAL_IP), "port": args.port},
+            "neighbors": active_neighbors,
+            "count": len(active_neighbors),
+        }
+    )
+
 
 def main():
     """Main function for the service."""
-    logger.info("Auto MicroK8s Cluster service started.")
+    logger.info(f"Auto MicroK8s Cluster service started on {LOCAL_IP}:{args.port}")
 
     try:
-        while True:
-            # Perform the service's main task here
-            logger.info("Service is running...")
-            time.sleep(10)  # Sleep for 10 seconds
+        # Start the discovery broadcast thread
+        broadcast_thread = threading.Thread(
+            target=send_discovery_broadcast, daemon=True
+        )
+        broadcast_thread.start()
+
+        # Start the thread to listen for broadcasts
+        listen_thread = threading.Thread(target=listen_for_broadcasts, daemon=True)
+        listen_thread.start()
+
+        # Start the cleanup thread
+        cleanup_thread = threading.Thread(target=cleanup_neighbors, daemon=True)
+        cleanup_thread.start()
+
+        # Start the web server
+        app.run(host="0.0.0.0", port=args.port, debug=False)
+
     except KeyboardInterrupt:
         logger.info("Auto MicroK8s Cluster service stopped.")
     except Exception as e:

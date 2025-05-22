@@ -43,7 +43,7 @@ def main():
     log_level = "INFO"
     try:
         Settings(log_level=log_level)
-    except ValidationError as e:
+    except ValidationError:
         print(f"Invalid log level: {log_level}. Using default: {Settings().log_level}")
 
     print("Settings file log level: ", Settings().log_level)

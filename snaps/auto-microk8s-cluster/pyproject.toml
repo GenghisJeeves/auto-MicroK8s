@@ -10,7 +10,7 @@ authors = [{ name = "Genghis Jeeves", email = "auto-microk8s@omni-fi.net" }]
 
 requires-python = ">=3.12"
 
-dependencies = ["pydantic>=2.0.0", "pydantic-settings>=2.0.0", "flask (>=3.1.0,<4.0.0)"]
+dependencies = ["pydantic>=2.0.0", "pydantic-settings>=2.0.0", "flask (>=3.1.0,<4.0.0)", "requests-unixsocket (>=0.4.1,<0.5.0)"]
 
 
 [project.scripts]
@@ -33,6 +33,7 @@ sphinx-autodoc-typehints = ">=3"
 pytest-cov = ">=6"
 
 # Enhanced Pyright configuration
+pyright = "^1.1.401"
 [tool.pyright]
 exclude = [
     "**/migrations",
@@ -44,7 +45,7 @@ exclude = [
 ]
 reportMissingImports = true
 reportMissingTypeStubs = true
-typeCheckingMode = "standard" # Enable type checking
+typeCheckingMode = "strict" # Enable type checking
 pythonVersion = "3.12"
 reportUnusedImport = true
 reportUnusedVariable = true

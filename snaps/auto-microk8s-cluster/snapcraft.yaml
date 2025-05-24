@@ -9,6 +9,10 @@ description: |
 confinement: devmode
 base: core24
 
+plugs:
+  snapd-control:
+    interface: snapd-control
+
 parts:
   auto-microk8s-cluster:
     plugin: python

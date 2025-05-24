@@ -34,6 +34,7 @@ pytest-cov = ">=6"
 
 # Enhanced Pyright configuration
 pyright = "^1.1.401"
+types-requests = "^2.32.0.20250515"
 [tool.pyright]
 exclude = [
     "**/migrations",

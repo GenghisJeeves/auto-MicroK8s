@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import socket
+import subprocess  # Add this import if not already present
 import threading
 import time
 from datetime import datetime, timedelta
@@ -258,6 +259,33 @@ def install_microk8s() -> bool:
         return False
 
 
+def check_microk8s_ready() -> bool:
+    """
+    Run microk8s status --wait-ready to confirm the cluster is ready.
+
+    Returns:
+        bool: True if MicroK8s is ready, False otherwise
+    """
+    try:
+        logger.info("Waiting for MicroK8s to be ready...")
+        result = subprocess.run(
+            ["microk8s", "status", "--wait-ready"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode == 0:
+            logger.info("MicroK8s is ready")
+            return True
+        else:
+            logger.error(f"MicroK8s readiness check failed: {result.stderr}")
+            return False
+    except Exception as e:
+        logger.error(f"Error checking MicroK8s readiness: {e}")
+        return False
+
+
 def main():
     """Main function for the service."""
     logger.info(f"Auto MicroK8s Cluster service started on {LOCAL_IP}:{args.port}")
@@ -268,10 +296,17 @@ def main():
             logger.info("MicroK8s not found. Installing...")
             if install_microk8s():
                 logger.info("MicroK8s installed successfully")
+                # Wait for MicroK8s to be ready
+                if not check_microk8s_ready():
+                    logger.warning(
+                        "MicroK8s installation completed but cluster is not ready"
+                    )
             else:
                 logger.error("Failed to install MicroK8s")
         else:
             logger.info("MicroK8s is already installed")
+            # Check readiness for pre-installed MicroK8s as well
+            check_microk8s_ready()
 
         # Start the discovery broadcast thread
         broadcast_thread = threading.Thread(

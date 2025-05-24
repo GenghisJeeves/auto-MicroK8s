@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroK8s Morse Code Listener</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        #visualizer {
+            width: 100%;
+            height: 150px;
+            background-color: #222;
+            margin: 20px 0;
+        }
+
+        #status {
+            font-weight: bold;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .status-waiting {
+            background-color: #fff3cd;
+        }
+
+        .status-listening {
+            background-color: #d4edda;
+        }
+
+        .status-found {
+            background-color: #cce5ff;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin: 10px 0;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0069d9;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+        }
+
+        #results {
+            margin-top: 20px;
+        }
+
+        .morse-display {
+            font-family: monospace;
+            font-size: 1.2em;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+
+        #urlDisplay {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 20px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>MicroK8s Morse Code URL Listener</h1>
+
+    <div class="container">
+        <p>This tool listens for morse code signals from your MicroK8s device that transmit the management interface
+            URL.</p>
+        <p>Look for a pattern starting with <code>_._._</code> (C), followed by the URL, ending with <code>..._._</code>
+            (AR).</p>
+
+        <div id="status" class="status-waiting">Waiting to start...</div>
+
+        <button id="startButton">Start Listening</button>
+        <button id="stopButton" disabled>Stop Listening</button>
+
+        <canvas id="visualizer"></canvas>
+
+        <div id="results">
+            <h3>Detected Morse Code:</h3>
+            <div id="morseOutput" class="morse-display"></div>
+
+            <h3>Decoded URL:</h3>
+            <div id="urlDisplay">No URL detected yet</div>
+        </div>
+    </div>
+
+    <script>
+        // Audio processing variables
+        let audioContext;
+        let analyser;
+        let microphone;
+        let javascriptNode;
+        let canvas, canvasCtx;
+        let isListening = false;
+
+        // Morse code detection variables
+        let signalThreshold = 0.1;  // Adjust based on ambient noise
+        let timeUnit = 100;         // Base time unit in ms (adjust for speed)
+        let lastSignalTime = 0;
+        let currentSignal = '';
+        let signalGap = false;
+        let morseBuffer = '';
+        let lastCharTime = 0;
+
+        // Morse code translation
+        const morseToChar = {
+            '.-': 'A', '-...': 'B', '-.-.': 'C', '-..': 'D', '.': 'E',
+            '..-.': 'F', '--.': 'G', '....': 'H', '..': 'I', '.---': 'J',
+            '-.-': 'K', '.-..': 'L', '--': 'M', '-.': 'N', '---': 'O',
+            '.--.': 'P', '--.-': 'Q', '.-.': 'R', '...': 'S', '-': 'T',
+            '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y',
+            '--..': 'Z', '.----': '1', '..---': '2', '...--': '3', '....-': '4',
+            '.....': '5', '-....': '6', '--...': '7', '---..': '8', '----.': '9',
+            '-----': '0', '.-.-.-': '.', '--..--': ',', '..--..': '?',
+            '.----.': "'", '-..-.': '/', '-.--.': '(', '-.--.-': ')',
+            '.-...': '&', '---...': ':', '-.-.-.': ';', '-...-': '=',
+            '.-.-.': '+', '-....-': '-', '..--.-': '_', '.-..-.': '"',
+            '.--.-.': '@', '.-.-': 'Ä', '---.': 'Ö', '..-..': 'Ü',
+            '....': 'H', '..': 'I'
+        };
+
+        // Pattern markers
+        const startPattern = '-.-.-';   // C repeated (signals start)
+        const endPattern = '...-.-.';   // AR (end of message)
+
+        // Decoded message storage
+        let decodedText = '';
+        let urlFound = false;
+
+        // DOM elements
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const statusDisplay = document.getElementById('status');
+        const morseOutput = document.getElementById('morseOutput');
+        const urlDisplay = document.getElementById('urlDisplay');
+        canvas = document.getElementById('visualizer');
+        canvasCtx = canvas.getContext('2d');
+
+        // Initialize the canvas for visualization
+        function initCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Start audio processing
+        async function startListening() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+
+                // Get microphone access
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                microphone = audioContext.createMediaStreamSource(stream);
+                microphone.connect(analyser);
+
+                // Set up processing node
+                const bufferSize = 2048;
+                javascriptNode = audioContext.createScriptProcessor(bufferSize, 1, 1);
+                analyser.connect(javascriptNode);
+                javascriptNode.connect(audioContext.destination);
+
+                // Process audio data
+                javascriptNode.onaudioprocess = processAudio;
+
+                // Update UI
+                isListening = true;
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                statusDisplay.textContent = 'Listening for morse code...';
+                statusDisplay.className = 'status-listening';
+
+                // Keep drawing the visualizer
+                drawVisualizer();
+
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                statusDisplay.textContent = 'Error: ' + error.message;
+            }
+        }
+
+        // Stop audio processing
+        function stopListening() {
+            if (microphone) {
+                microphone.mediaStream.getTracks().forEach(track => track.stop());
+            }
+
+            if (javascriptNode) {
+                javascriptNode.disconnect();
+            }
+
+            if (analyser) {
+                analyser.disconnect();
+            }
+
+            if (audioContext) {
+                audioContext.close();
+            }
+
+            isListening = false;
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            statusDisplay.textContent = 'Stopped listening';
+            statusDisplay.className = 'status-waiting';
+        }
+
+        // Process audio for morse code detection
+        function processAudio(event) {
+            const inputData = new Float32Array(analyser.fftSize);
+            analyser.getFloatTimeDomainData(inputData);
+
+            // Calculate signal strength (RMS)
+            let sum = 0;
+            for (let i = 0; i < inputData.length; i++) {
+                sum += inputData[i] * inputData[i];
+            }
+            const rms = Math.sqrt(sum / inputData.length);
+
+            const now = Date.now();
+            const signal = rms > signalThreshold;
+
+            // State transitions for morse detection
+            if (signal && !signalGap) {
+                // Start of a new signal
+                const silenceDuration = now - lastSignalTime;
+
+                if (lastSignalTime > 0) {
+                    // Check for character gap (silence 3x longer than dot)
+                    if (silenceDuration > timeUnit * 3 && currentSignal.length > 0) {
+                        interpretMorseChar(currentSignal);
+                        currentSignal = '';
+                    }
+
+                    // Check for word gap (silence 7x longer than dot)
+                    if (silenceDuration > timeUnit * 7) {
+                        morseBuffer += ' ';
+                        updateMorseDisplay();
+                        checkForPatterns();
+                    }
+                }
+
+                signalGap = true;
+                lastSignalTime = now;
+            }
+            else if (!signal && signalGap) {
+                // End of a signal
+                const signalDuration = now - lastSignalTime;
+
+                // Dot or dash detection
+                if (signalDuration < timeUnit * 2) {
+                    currentSignal += '.';
+                } else {
+                    currentSignal += '-';
+                }
+
+                signalGap = false;
+                lastSignalTime = now;
+                updateMorseDisplay();
+            }
+        }
+
+        // Visualize the audio input
+        function drawVisualizer() {
+            if (!isListening) return;
+
+            requestAnimationFrame(drawVisualizer);
+
+            const bufferLength = analyser.fftSize;
+            const dataArray = new Float32Array(bufferLength);
+            analyser.getFloatTimeDomainData(dataArray);
+
+            canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = 'rgb(0, 255, 0)';
+            canvasCtx.beginPath();
+
+            const sliceWidth = canvas.width / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] * 3;  // Amplify for visibility
+                const y = (v * canvas.height / 2) + canvas.height / 2;
+
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+            }
+
+            canvasCtx.lineTo(canvas.width, canvas.height / 2);
+            canvasCtx.stroke();
+        }
+
+        // Interpret morse character and add to decoded text
+        function interpretMorseChar(morse) {
+            const char = morseToChar[morse] || '?';
+            morseBuffer += morse + ' ';
+            decodedText += char;
+            updateMorseDisplay();
+            checkForPatterns();
+        }
+
+        // Update the morse display
+        function updateMorseDisplay() {
+            morseOutput.textContent = morseBuffer + ' ' + currentSignal;
+        }
+
+        // Check for start/end patterns and extract URL
+        function checkForPatterns() {
+            // Check if we've found the start pattern
+            if (!urlFound && morseBuffer.includes(startPattern)) {
+                const startIndex = morseBuffer.indexOf(startPattern) + startPattern.length;
+                const afterStart = morseBuffer.substring(startIndex);
+
+                // Reset for new message
+                decodedText = '';
+                statusDisplay.textContent = 'Start pattern detected! Listening for URL...';
+            }
+
+            // Check if we have start and end patterns
+            if (morseBuffer.includes(startPattern) && morseBuffer.includes(endPattern)) {
+                const startIndex = morseBuffer.indexOf(startPattern) + startPattern.length;
+                const endIndex = morseBuffer.indexOf(endPattern);
+
+                if (startIndex < endIndex) {
+                    // Extract the morse code between start and end patterns
+                    const urlMorse = morseBuffer.substring(startIndex, endIndex).trim();
+
+                    // Decode the URL from morse
+                    let url = '';
+                    const morseParts = urlMorse.split(' ');
+
+                    for (const part of morseParts) {
+                        if (part) {
+                            url += morseToChar[part] || '?';
+                        } else {
+                            url += ' ';
+                        }
+                    }
+
+                    // Clean up and display the URL
+                    url = url.trim();
+                    urlDisplay.innerHTML = `<a href="${url}" target="_blank">${url}</a>`;
+                    statusDisplay.textContent = 'URL detected!';
+                    statusDisplay.className = 'status-found';
+                    urlFound = true;
+                }
+            }
+        }
+
+        // Event listeners
+        startButton.addEventListener('click', startListening);
+        stopButton.addEventListener('click', stopListening);
+
+        // Initialize the canvas on load
+        window.addEventListener('load', initCanvas);
+        window.addEventListener('resize', initCanvas);
+    </script>
+</body>
+
+</html>

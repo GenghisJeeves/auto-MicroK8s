@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroK8s Morse Code Decoder</title>
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .container {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+
+        #visualization {
+            width: 100%;
+            height: 200px;
+            background-color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        #morse-output,
+        #decoded-message {
+            font-family: monospace;
+            font-size: 18px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 60px;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        #url-output {
+            font-weight: bold;
+            color: #2980b9;
+            padding: 10px;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background-color: #95a5a6;
+        }
+
+        .status-indicator.active {
+            background-color: #2ecc71;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+        }
+
+        .settings {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>MicroK8s Morse Code Decoder</h1>
+
+    <div class="container">
+        <div class="status">
+            <span id="status-indicator" class="status-indicator"></span>
+            <span id="status-text">Ready</span>
+        </div>
+
+        <div class="controls">
+            <button id="start-button">Start Listening</button>
+            <button id="stop-button" disabled>Stop Listening</button>
+        </div>
+
+        <div class="settings">
+            <div>
+                <label for="frequency-range">Target Frequency: <span id="frequency-value">800</span> Hz</label>
+                <input type="range" id="frequency-range" min="500" max="1500" value="800">
+            </div>
+            <div>
+                <label for="volume-threshold">Volume Threshold: <span id="threshold-value">200</span></label>
+                <input type="range" id="volume-threshold" min="50" max="250" value="200">
+            </div>
+        </div>
+
+        <canvas id="visualization"></canvas>
+
+        <h3>Detected Morse Code:</h3>
+        <div id="morse-output"></div>
+
+        <h3>Decoded Message:</h3>
+        <div id="decoded-message"></div>
+
+        <h3>Detected URL:</h3>
+        <div id="url-output">None detected yet</div>
+    </div>
+
+    <script type="module">
+        // Import the necessary modules
+        import MorseDecoder from './morse-pro-decoder.js';
+        import MorseListener from './morse-pro-listener.js';
+
+        // DOM elements
+        const startButton = document.getElementById('start-button');
+        const stopButton = document.getElementById('stop-button');
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const morseOutput = document.getElementById('morse-output');
+        const decodedMessage = document.getElementById('decoded-message');
+        const urlOutput = document.getElementById('url-output');
+        const canvas = document.getElementById('visualization');
+        const ctx = canvas.getContext('2d');
+        const frequencyRange = document.getElementById('frequency-range');
+        const frequencyValue = document.getElementById('frequency-value');
+        const volumeThreshold = document.getElementById('volume-threshold');
+        const thresholdValue = document.getElementById('threshold-value');
+
+        // Set canvas size
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+
+        // Initialize variables
+        let listener;
+        let decoder;
+        let animationFrameId;
+        let fullMorseBuffer = "";
+        let fullTextBuffer = "";
+
+        // Start pattern (_._._) and end pattern (..._._)
+        const startPattern = "-.-.-";   // KN in Morse (simplified for display)
+        const endPattern = "...-.-.";   // AR in Morse (end of message)
+
+        // Initialize decoder with callback
+        function initializeDecoder() {
+            decoder = new MorseDecoder({
+                wpm: 20, // Words per minute
+                messageCallback: function (data) {
+                    // Add to our buffers
+                    fullMorseBuffer += data.morse;
+                    fullTextBuffer += data.message;
+
+                    // Update display
+                    morseOutput.textContent = fullMorseBuffer;
+                    decodedMessage.textContent = fullTextBuffer;
+
+                    // Check for URL between start and end patterns
+                    checkForUrl();
+                }
+            });
+
+            return decoder;
+        }
+
+        // Initialize listener with our decoder
+        function initializeListener() {
+            listener = new MorseListener(
+                256, // fftSize
+                -60, // volumeFilterMin
+                -30, // volumeFilterMax
+                parseInt(frequencyRange.value), // frequencyFilterMin
+                parseInt(frequencyRange.value), // frequencyFilterMax
+                parseInt(volumeThreshold.value), // volumeThreshold
+                decoder,
+                function () { }, // spectrogramCallback
+                function () { }, // frequencyFilterCallback
+                function () { }, // volumeFilterCallback
+                function () { }, // volumeThresholdCallback
+                function () { // micSuccessCallback
+                    setStatus('active', 'Listening for Morse Code');
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                    startVisualization();
+                },
+                function (error) { // micErrorCallback
+                    setStatus('error', 'Error: ' + error.message);
+                    console.error('Microphone error:', error);
+                }
+                // You can add fileLoadCallback, fileErrorCallback, EOFCallback if needed
+            );
+            return listener;
+        }
+
+        // Start listening
+        function startListening() {
+            // Clear previous data
+            fullMorseBuffer = "";
+            fullTextBuffer = "";
+            morseOutput.textContent = "";
+            decodedMessage.textContent = "";
+            urlOutput.textContent = "None detected yet";
+
+            // Initialize decoder and listener
+            decoder = initializeDecoder();
+            listener = initializeListener();
+
+            // Start listening
+            setStatus('connecting', 'Connecting to microphone...');
+            listener.startListening();
+        }
+
+        // Stop listening
+        function stopListening() {
+            if (listener) {
+                listener.stop();
+            }
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            setStatus('inactive', 'Stopped listening');
+            startButton.disabled = false;
+            stopButton.disabled = true;
+        }
+
+        // Update status indicator and text
+        function setStatus(status, text) {
+            statusText.textContent = text;
+            statusIndicator.className = 'status-indicator ' + status;
+        }
+
+        // Start visualization
+        function startVisualization() {
+            function draw() {
+                animationFrameId = requestAnimationFrame(draw);
+
+                if (!listener || !listener.spectrogram) return;
+
+                const spec = listener.spectrogram;
+                const data = spec.frequencyData;
+
+                // Clear canvas
+                ctx.fillStyle = '#2c3e50';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw frequency data
+                const barWidth = canvas.width / data.length;
+
+                // Draw all frequencies
+                ctx.fillStyle = '#3498db';
+                for (let i = 0; i < data.length; i++) {
+                    const barHeight = data[i] / 255 * canvas.height;
+                    ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth, barHeight);
+                }
+
+                // Highlight our target frequency range
+                const lowBin = spec.filterBinLow;
+                const highBin = spec.filterBinHigh;
+                ctx.fillStyle = spec.isOn ? '#2ecc71' : '#e74c3c';
+                for (let i = lowBin; i <= highBin; i++) {
+                    const barHeight = data[i] / 255 * canvas.height;
+                    ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth, barHeight);
+                }
+
+                // Draw threshold line
+                const thresholdHeight = (1 - spec.volumeThreshold / 255) * canvas.height;
+                ctx.strokeStyle = '#f1c40f';
+                ctx.beginPath();
+                ctx.moveTo(0, thresholdHeight);
+                ctx.lineTo(canvas.width, thresholdHeight);
+                ctx.stroke();
+            }
+
+            draw();
+        }
+
+        // Check for URL between start and end patterns
+        function checkForUrl() {
+            if (fullMorseBuffer.includes(startPattern) && fullMorseBuffer.includes(endPattern)) {
+                const startPos = fullMorseBuffer.indexOf(startPattern) + startPattern.length;
+                const endPos = fullMorseBuffer.indexOf(endPattern);
+
+                if (startPos < endPos) {
+                    // Extract all morse between start/end patterns
+                    const morseParts = fullMorseBuffer.substring(startPos, endPos).trim().split(" ");
+
+                    // Convert the parts back to text using the decoder
+                    let url = "";
+                    for (const part of morseParts) {
+                        if (part) {
+                            // This is a simplification - the actual conversion would depend
+                            // on the decoder's internal mapping
+                            url += decoder.displayText(decoder.loadMorse(part));
+                        }
+                    }
+
+                    // Display the URL
+                    urlOutput.innerHTML = `<a href="${url}" target="_blank">${url}</a>`;
+
+                    // Highlight discovery
+                    setStatus('active', 'URL detected!');
+                }
+            }
+        }
+
+        // Event listeners
+        startButton.addEventListener('click', startListening);
+        stopButton.addEventListener('click', stopListening);
+
+        // Update frequency and threshold values
+        frequencyRange.addEventListener('input', function () {
+            const value = parseInt(this.value);
+            frequencyValue.textContent = value;
+            if (listener) {
+                listener.frequencyFilter = value;
+            }
+        });
+
+        volumeThreshold.addEventListener('input', function () {
+            const value = parseInt(this.value);
+            thresholdValue.textContent = value;
+            if (listener) {
+                listener.volumeThreshold = value;
+            }
+        });
+    </script>
+</body>
+
+</html>

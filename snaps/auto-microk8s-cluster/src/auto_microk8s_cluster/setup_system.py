@@ -5,7 +5,6 @@ from typing import Any
 
 import requests_unixsocket
 from dasbus.connection import SystemMessageBus
-from dasbus.typing import UInt16, UInt32
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -183,12 +182,12 @@ def setup_avahi_service() -> bool:
         entry_group.AddService(  # type: ignore
             -1,  # Interface index (-1 for all)
             -1,  # Protocol (-1 for IPv4+IPv6)
-            UInt32(0),  # Flags (0 for default)
+            int(0),  # Flags (0 for default)
             "microk8s",  # Service name
             "_http._tcp",  # Service type
             "",  # Domain (empty for local)
             "",  # Host (empty for default)
-            UInt16(80),  # Port
+            int(80),  # Port
             list[dict[str, Any]](),  # TXT records (empty list)
         )
 

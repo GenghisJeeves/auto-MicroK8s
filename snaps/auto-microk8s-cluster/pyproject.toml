@@ -8,9 +8,9 @@ version = "0.1.0"
 description = "Automatically discover neighbours and configure a microk8s cluster"
 authors = [{ name = "Genghis Jeeves", email = "auto-microk8s@omni-fi.net" }]
 
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4.0"
 
-dependencies = ["pydantic>=2.0.0", "pydantic-settings>=2.0.0", "flask (>=3.1.0,<4.0.0)", "requests-unixsocket (>=0.4.1,<0.5.0)", "numpy (>=2.2.6,<3.0.0)", "sounddevice (>=0.5.2,<0.6.0)", "scipy (>=1.15.3,<2.0.0)", "dasbus (>=1.7,<2.0)", "cryptography (>=45.0.3,<46.0.0)"]
+dependencies = ["pydantic>=2.0.0", "pydantic-settings>=2.0.0", "flask (>=3.1.0,<4.0.0)", "requests-unixsocket (>=0.4.1,<0.5.0)", "numpy (>=2.2.6,<3.0.0)", "sounddevice (>=0.5.2,<0.6.0)", "scipy (>=1.15.3,<2.0.0)", "dasbus (>=1.7,<2.0)", "cryptography (>=45.0.3,<46.0.0)", "vext (>=0.7.6,<0.8.0)", "vext-gi (>=0.7.4,<0.8.0)"]
 
 
 [project.scripts]
@@ -36,6 +36,7 @@ pytest-cov = ">=6"
 pyright = "^1.1.401"
 types-requests = "^2.32.0.20250515"
 scipy-stubs = "^1.15.3.0"
+prospector = {extras = ["with-bandit"], version = "^1.17.1"}
 [tool.pyright]
 exclude = [
     "**/migrations",
@@ -115,3 +116,6 @@ plugins = ["mypy_django_plugin.main"]
 [[tool.mypy.overrides]]
 module = "migrations.*"
 ignore_errors = true
+
+[tool.bandit.assert_used]
+skips = ['*_test.py', '*/test_*.py']

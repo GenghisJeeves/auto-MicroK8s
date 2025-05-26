@@ -1,0 +1,10 @@
+strictness: veryhigh
+test-warnings: true
+doc-warnings: true
+max-line-length: 88
+bandit:
+  run: true
+  options:
+    config: pyproject.toml
+dodgy:
+  run: true

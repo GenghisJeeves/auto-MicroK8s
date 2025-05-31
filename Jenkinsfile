@@ -142,7 +142,7 @@ pipeline {
                 sh 'cp ${SNAP_FILE} artifacts/'
                 
                 // Archive the snap package
-                archiveArtifacts artifacts: 'artifacts/*.snap', fingerprint: true
+                //archiveArtifacts artifacts: 'artifacts/*.snap', fingerprint: true
             }
         }
     }

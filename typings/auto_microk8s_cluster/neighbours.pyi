@@ -8,6 +8,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
+
 from cryptography.hazmat.primitives.asymmetric import x25519
 
 logger = ...
@@ -17,19 +18,19 @@ KEY_PATH = ...
 PRIVATE_KEY_PATH = ...
 PUBLIC_KEY_PATH = ...
 _local = ...
+
 @dataclass
 class Neighbour:
     """Data class for storing neighbor information"""
+
     name: str
     ip_address: ipaddress.IPv4Address | ipaddress.IPv6Address
     public_key: str
     trusted: bool = ...
     id: int | None = ...
-    def __post_init__(self): # -> None:
+    def __post_init__(self) -> None:
         """Ensure ip_address is an IP address object"""
         ...
-    
-
 
 @contextmanager
 def get_db_connection() -> Generator[sqlite3.Connection, None, None]:
@@ -61,7 +62,9 @@ def get_public_key_base64() -> str:
     """
     ...
 
-def send_secure_message(neighbour: Neighbour, message: dict[str, Any]) -> dict[str, str] | None:
+def send_secure_message(
+    neighbour: Neighbour, message: dict[str, Any]
+) -> dict[str, str] | None:
     """
     Securely send a message to a neighbor using X25519 for key exchange
     and ChaCha20-Poly1305 for authenticated encryption.
@@ -75,7 +78,9 @@ def send_secure_message(neighbour: Neighbour, message: dict[str, Any]) -> dict[s
     """
     ...
 
-def receive_secure_message(sender_key_base64: str, nonce_base64: str, ciphertext_base64: str) -> dict[str, Any] | None:
+def receive_secure_message(
+    sender_key_base64: str, nonce_base64: str, ciphertext_base64: str
+) -> dict[str, Any] | None:
     """
     Receive and decrypt a secure message from a neighbor.
 
@@ -103,7 +108,9 @@ def add_neighbour(neighbour: Neighbour) -> int | None:
     """
     ...
 
-def set_neighbour_trusted(ip_address: str | ipaddress.IPv4Address | ipaddress.IPv6Address, trusted: bool = ...) -> bool:
+def set_neighbour_trusted(
+    ip_address: str | ipaddress.IPv4Address | ipaddress.IPv6Address, trusted: bool = ...
+) -> bool:
     """
     Set the trusted status for a neighbor
 
@@ -116,7 +123,9 @@ def set_neighbour_trusted(ip_address: str | ipaddress.IPv4Address | ipaddress.IP
     """
     ...
 
-def get_neighbour_by_ip(ip_address: str | ipaddress.IPv4Address | ipaddress.IPv6Address) -> Neighbour | None:
+def get_neighbour_by_ip(
+    ip_address: str | ipaddress.IPv4Address | ipaddress.IPv6Address,
+) -> Neighbour | None:
     """
     Retrieve a neighbor by IP address
 
@@ -146,7 +155,9 @@ def get_trusted_neighbours() -> list[Neighbour]:
     """
     ...
 
-def remove_neighbour(ip_address: str | ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+def remove_neighbour(
+    ip_address: str | ipaddress.IPv4Address | ipaddress.IPv6Address,
+) -> bool:
     """
     Remove a neighbor from storage
 

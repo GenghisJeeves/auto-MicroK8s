@@ -10,7 +10,7 @@ authors = [{ name = "Genghis Jeeves", email = "auto-microk8s@omni-fi.net" }]
 
 requires-python = ">=3.12,<4.0"
 
-dependencies = ["pydantic>=2.0.0", "pydantic-settings>=2.0.0", "flask (>=3.1.0,<4.0.0)", "requests-unixsocket (>=0.4.1,<0.5.0)", "numpy (>=2.2.6,<3.0.0)", "sounddevice (>=0.5.2,<0.6.0)", "scipy (>=1.15.3,<2.0.0)", "dasbus (>=1.7,<2.0)", "cryptography (>=45.0.3,<46.0.0)", "vext (>=0.7.6,<0.8.0)", "vext-gi (>=0.7.4,<0.8.0)"]
+dependencies = ["pydantic>=2.0.0", "pydantic-settings>=2.0.0", "flask (>=3.1.0,<4.0.0)", "requests-unixsocket (>=0.4.1,<0.5.0)", "numpy (>=2.2.6,<3.0.0)", "sounddevice (>=0.5.2,<0.6.0)", "scipy (>=1.15.3,<2.0.0)", "cryptography (>=45.0.3,<46.0.0)", "sdbus (>=0.14.0,<0.15.0)", "bcrypt (>=4.3.0,<5.0.0)"]
 
 
 [project.scripts]

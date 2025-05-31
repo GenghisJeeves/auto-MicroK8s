@@ -1,4 +1,9 @@
 {
     "python.defaultInterpreterPath": "${workspaceFolder}/.env/bin/python",
-    "python.terminal.launchArgs": []
+    "python.terminal.launchArgs": [],
+    "python.testing.pytestArgs": [
+        "snaps"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }

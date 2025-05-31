@@ -4,7 +4,8 @@ import time
 from typing import Any
 
 import requests_unixsocket
-from dasbus.connection import SystemMessageBus
+
+from .avahi import check_hostname, set_hostname
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -155,50 +156,22 @@ def check_microk8s_ready() -> bool:
         return False
 
 
-# Broadcast service with Avahi
+# Broadcast service with Avahi using sdbus
 def setup_avahi_service() -> bool:
+    """
+    Set up an Avahi (mDNS) service for MicroK8s discovery using sdbus.
 
-    # Constants
-    AVAHI_DBUS_NAME = "org.freedesktop.Avahi"
-    AVAHI_DBUS_PATH_SERVER = "/"
-    AVAHI_DBUS_INTERFACE_SERVER = "org.freedesktop.Avahi.Server"
-    AVAHI_DBUS_INTERFACE_ENTRY_GROUP = "org.freedesktop.Avahi.EntryGroup"
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    avahi_setup_success = False
+    if check_hostname("microk8s"):
+        logger.info("Hostname is already set to 'microk8s'")
+        avahi_setup_success = True
+    else:
+        avahi_setup_success = set_hostname("microk8s")
 
-    try:
-
-        bus = SystemMessageBus()
-        # Get the Avahi server object
-        avahi_server = bus.get_proxy(  # type: ignore
-            AVAHI_DBUS_NAME, AVAHI_DBUS_PATH_SERVER, AVAHI_DBUS_INTERFACE_SERVER
-        )
-
-        # Create a new entry group
-        entry_group_path = avahi_server.EntryGroupNew()  # type: ignore
-        entry_group = bus.get_proxy(  # type: ignore
-            AVAHI_DBUS_NAME, entry_group_path, AVAHI_DBUS_INTERFACE_ENTRY_GROUP  # type: ignore
-        )
-
-        # Add an HTTP service (port 80, no TXT records)
-        entry_group.AddService(  # type: ignore
-            -1,  # Interface index (-1 for all)
-            -1,  # Protocol (-1 for IPv4+IPv6)
-            int(0),  # Flags (0 for default)
-            "microk8s",  # Service name
-            "_http._tcp",  # Service type
-            "",  # Domain (empty for local)
-            "",  # Host (empty for default)
-            int(80),  # Port
-            list[dict[str, Any]](),  # TXT records (empty list)
-        )
-
-        # Commit the service
-        entry_group.Commit()  # type: ignore
-
-        logger.info("Avahi service setup completed successfully")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to set up Avahi service: {e}")
-        return False
+    return avahi_setup_success
 
 
 def setup_system() -> bool:
@@ -209,6 +182,7 @@ def setup_system() -> bool:
     - Wait for MicroK8s to be ready
     - Check if Avahi is installed
     - Install Avahi if needed
+    - Set up Avahi service for discovery
 
     Returns:
         bool: True if setup is successful, False otherwise
@@ -240,11 +214,19 @@ def setup_system() -> bool:
         logger.info("Avahi not found. Installing...")
         if install_avahi():
             logger.info("Avahi installed successfully")
+            # Set up Avahi service after installation
+            if not setup_avahi_service():
+                logger.warning("Failed to set up Avahi service")
+                success = False
         else:
             logger.error("Failed to install Avahi")
             success = False
     else:
         logger.info("Avahi is already installed")
+        # Set up Avahi service for pre-installed Avahi as well
+        if not setup_avahi_service():
+            logger.warning("Failed to set up Avahi service")
+            success = False
 
     return success
 

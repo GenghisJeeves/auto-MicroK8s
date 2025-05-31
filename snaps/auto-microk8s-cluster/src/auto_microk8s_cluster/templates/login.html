@@ -1,0 +1,26 @@
+# filepath:
+/home/arww24/Documents/git/auto-MicroK8s/snaps/auto-microk8s-cluster/src/auto_microk8s_cluster/templates/login.html
+{% extends 'base.html' %}
+
+{% block title %}Login - Auto MicroK8s Cluster{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Login</h2>
+    </div>
+
+    <form method="post" action="{{ url_for('login') }}">
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Login</button>
+    </form>
+</div>
+{% endblock %}

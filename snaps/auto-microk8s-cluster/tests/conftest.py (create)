@@ -1,0 +1,8 @@
+def pytest_configure():
+    import sys
+    from unittest.mock import patch
+
+    sys.argv = ['']  # Clear command line arguments
+    patch('argparse.ArgumentParser.parse_args', return_value=None).start()  # Mock parse_args to avoid errors during tests
+
+    # Additional setup can be added here if needed

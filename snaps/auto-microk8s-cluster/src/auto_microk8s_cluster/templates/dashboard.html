@@ -1,0 +1,120 @@
+home/arww24/Documents/git/auto-MicroK8s/snaps/auto-microk8s-cluster/src/auto_microk8s_cluster/templates/dashboard.html
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Auto MicroK8s Cluster{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Node Information</h2>
+    </div>
+
+    <table>
+        <tr>
+            <th>Hostname:</th>
+            <td>{{ hostname }}</td>
+        </tr>
+        <tr>
+            <th>IP Address:</th>
+            <td>{{ ip }}</td>
+        </tr>
+        <tr>
+            <th>Web Service Port:</th>
+            <td>{{ port }}</td>
+        </tr>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Active Neighbors ({{ neighbor_count }})</h2>
+    </div>
+
+    {% if active_neighbors %}
+    <table>
+        <thead>
+            <tr>
+                <th>Hostname</th>
+                <th>IP Address</th>
+                <th>Port</th>
+                <th>Last Seen</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for neighbor in active_neighbors %}
+            <tr>
+                <td>{{ neighbor.hostname }}</td>
+                <td>{{ neighbor.ip }}</td>
+                <td>{{ neighbor.port }}</td>
+                <td>{{ neighbor.last_seen.strftime('%Y-%m-%d %H:%M:%S') if neighbor.last_seen else 'Unknown' }}</td>
+                <td>
+                    <form method="post" action="{{ url_for('trust_neighbor', ip=neighbor.ip) }}" style="display:inline">
+                        <button type="submit" class="btn btn-success btn-sm">Trust</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No active neighbors found. Discovering nodes...</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Trusted Neighbors</h2>
+    </div>
+
+    {% if db_neighbors %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>IP Address</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for neighbor in db_neighbors %}
+            <tr>
+                <td>{{ neighbor.name }}</td>
+                <td>{{ neighbor.ip_address }}</td>
+                <td>
+                    {% if neighbor.trusted %}
+                    <span class="badge badge-success">Trusted</span>
+                    {% else %}
+                    <span class="badge badge-warning">Untrusted</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if neighbor.trusted %}
+                    <form method="post" action="{{ url_for('untrust_neighbor', ip=neighbor.ip_address) }}"
+                        style="display:inline">
+                        <button type="submit" class="btn btn-danger btn-sm">Untrust</button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{{ url_for('trust_neighbor', ip=neighbor.ip_address) }}"
+                        style="display:inline">
+                        <button type="submit" class="btn btn-success btn-sm">Trust</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No neighbors recorded in the database yet.</p>
+    {% endif %}
+</div>
+
+<script>
+    // Auto-refresh the page every 30 seconds
+    setTimeout(function () {
+        window.location.reload();
+    }, 30000);
+</script>
+{% endblock %}

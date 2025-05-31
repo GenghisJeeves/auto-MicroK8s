@@ -1,9 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}Auto MicroK8s Cluster{% endblock %}</title>
     <style>
         :root {
@@ -47,6 +48,17 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            height: 40px;
+            width: auto;
         }
 
         nav ul {
@@ -190,7 +202,11 @@
 <body>
     <header>
         <nav>
-            <h1>Auto MicroK8s Cluster</h1>
+            <div class="brand">
+                <img src="{{ url_for('static', filename='images/k8s_logo_with_border.svg') }}" alt="Kubernetes Logo"
+                    class="logo" />
+                <h1>Auto MicroK8s Cluster</h1>
+            </div>
             <ul>
                 {% if session.authenticated %}
                 <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
@@ -213,7 +229,7 @@
     </div>
 
     <footer>
-        <p>&copy; {{ now.year }} Auto MicroK8s Cluster</p>
+        <p>© 2025 AW6 LLP</p>
     </footer>
 </body>
 

@@ -41,9 +41,9 @@ runcmd:
   - [poetry, run, auto-microk8s-cluster]
 
 # Run on boot
-bootcmd:
-  - [echo, "Starting auto-microk8s server"]
-  - [cd, /mnt/]
-  - [poetry, run, auto-microk8s-cluster]
+#bootcmd:
+#  - [echo, "Starting auto-microk8s server"]
+#  - [cd, /mnt/]
+#  - [poetry, run, auto-microk8s-cluster]
 
 byobu_by_default: enable

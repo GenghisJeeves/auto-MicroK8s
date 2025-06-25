@@ -1,6 +1,6 @@
 import os
 import sys
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -23,3 +23,23 @@ def patch_arg_parser():
         mock_parse_args.return_value.port = 8800
         mock_parse_args.return_value.discovery_port = 8801
         yield
+
+
+@pytest.fixture
+def mock_add_neighbour():
+    """
+    Fixture to mock the add_neighbour function
+    This is needed because the test is expecting this as a fixture
+    even though it's patched with the @patch decorator
+    """
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_get_neighbour():
+    """
+    Fixture to mock the get_neighbour_by_ip function
+    This is needed because the test is expecting this as a fixture
+    even though it's patched with the @patch decorator
+    """
+    return MagicMock()

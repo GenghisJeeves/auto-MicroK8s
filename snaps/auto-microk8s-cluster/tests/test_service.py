@@ -142,12 +142,14 @@ class TestBroadcastAndDiscovery:
     @patch("auto_microk8s_cluster.service.get_neighbour_by_ip")
     @patch("socket.socket")
     @patch("auto_microk8s_cluster.service.args")
+    @patch("auto_microk8s_cluster.service.LOCAL_IP", ip_address("192.168.1.5"))
     def test_listen_for_broadcasts_new_neighbor(
         self,
+        mock_local_ip: MagicMock,
         mock_args: MagicMock,
         mock_socket: MagicMock,
-        mock_get_neighbor: MagicMock,
-        mock_add_neighbor: MagicMock,
+        mock_get_neighbour: MagicMock,
+        mock_add_neighbour: MagicMock,
         reset_neighbors: None,
     ) -> None:
         """Test listening for broadcasts from a new neighbor"""
@@ -157,35 +159,53 @@ class TestBroadcastAndDiscovery:
         mock_socket_instance = MagicMock()
         mock_socket.return_value.__enter__.return_value = mock_socket_instance
 
-        # Mock receiving broadcast data
-        mock_socket_instance.recvfrom.side_effect = [
-            (  # First call returns valid data
-                json.dumps(
-                    {
-                        "ip": "192.168.1.100",
-                        "port": 8800,
-                        "hostname": "test-neighbor",
-                        "public_key": "neighbor-public-key",
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                ).encode(),
-                ("192.168.1.100", 8801),
-            ),
-            Exception(
-                "Stop the test"
-            ),  # Second call raises exception to break the loop
-        ]
+        # Create test timestamp
+        test_timestamp = datetime.now().isoformat()
+
+        # Create a custom exception that won't be caught by except Exception
+        class TestStopSignal(BaseException):
+            pass
+
+        # Create the test data tuple that recvfrom should return
+        test_data = (
+            json.dumps(
+                {
+                    "ip": "192.168.1.100",
+                    "port": 8800,
+                    "hostname": "test-neighbor",
+                    "public_key": "neighbor-public-key",
+                    "timestamp": test_timestamp,
+                }
+            ).encode(),
+            ("192.168.1.100", 8801),
+        )
+
+        # Setup mock to return data once, then raise exception
+        mock_recvfrom = MagicMock()
+        mock_recvfrom.side_effect = [test_data, TestStopSignal("Stop the test")]
+        mock_socket_instance.recvfrom = mock_recvfrom
 
         # Mock that we don't know this neighbor yet
-        mock_get_neighbor.return_value = None
+        mock_get_neighbour.return_value = None
 
-        # Run function
-        with pytest.raises(Exception, match="Stop the test"):
+        # Run function - should break out on BaseException
+        with pytest.raises(TestStopSignal):
             listen_for_broadcasts()
 
+        # Verify socket was set up correctly
+        mock_socket_instance.setsockopt.assert_called_once_with(
+            socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+        )
+        mock_socket_instance.bind.assert_called_once_with(
+            ("", mock_args.discovery_port)
+        )
+
+        # Verify recvfrom was called
+        mock_recvfrom.assert_called()
+
         # Verify neighbor was added
-        assert mock_add_neighbor.called
-        neighbor_arg = mock_add_neighbor.call_args[0][0]
+        mock_add_neighbour.assert_called_once()
+        neighbor_arg = mock_add_neighbour.call_args[0][0]
         assert isinstance(neighbor_arg, Neighbour)
         assert neighbor_arg.name == "test-neighbor"
         assert str(neighbor_arg.ip_address) == "192.168.1.100"
@@ -196,6 +216,11 @@ class TestBroadcastAndDiscovery:
         with neighbors_lock:
             assert ip_address("192.168.1.100") in neighbors
             assert neighbors[ip_address("192.168.1.100")]["hostname"] == "test-neighbor"
+            assert neighbors[ip_address("192.168.1.100")]["port"] == 8800
+            assert (
+                neighbors[ip_address("192.168.1.100")]["public_key"]
+                == "neighbor-public-key"
+            )
 
     @patch("auto_microk8s_cluster.service.time.sleep", side_effect=InterruptedError)
     def test_cleanup_neighbors(

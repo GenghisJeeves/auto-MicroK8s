@@ -1,0 +1,49 @@
+#cloud-config
+
+# Update and upgrade packages on first boot
+package_update: true
+package_upgrade: true
+
+# Automatically reboot if required by updates
+package_reboot_if_required: true
+
+# Final message when cloud-init completes
+final_message: "System configuration completed after $UPTIME seconds"
+
+ssh_authorized_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBuaobQ6v5aNuEhLrV5hBOJWMlpE7aGvudJwkgQlIrFc admin@aw6.uk
+
+# Set the hostname
+hostname: server1
+# Set the timezone
+timezone: Europe/London
+# Set the locale
+locale: en_GB.UTF-8
+# Set the keyboard layout
+keyboard:
+  layout: gb
+  variant: nodeadkeys
+
+# Install necessary packages
+packages:
+  - pipx
+  - git
+
+# Run commands after packages are installed
+runcmd:
+  - [pipx, ensurepath]
+  - [eval, "$(register-python-argcomplete pipx)"]
+  - [pipx, install, poetry]
+  - [mkdir, -p, /opt/auto-microk8s-cluster]
+  - [cd, /opt/auto-microk8s-cluster]
+  - [git, clone, https://github.com/GenghisJeeves/auto-MicroK8s.git]
+  - [poetry, install]
+  - [poetry, run, auto-microk8s-cluster]
+
+# Run on boot
+bootcmd:
+  - [echo, "Starting auto-microk8s server"]
+  - [cd, /mnt/]
+  - [poetry, run, auto-microk8s-cluster]
+
+byobu_by_default: enable

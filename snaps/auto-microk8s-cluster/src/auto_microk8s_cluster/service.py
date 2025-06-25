@@ -96,6 +96,15 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=24)
 
 
+# Add this decorator to set the XHTML content type
+@app.after_request
+def set_xhtml_content_type(response: Response) -> Response:
+    """Set the correct Content-Type header for XHTML responses."""
+    if response.mimetype == "text/html":
+        response.headers["Content-Type"] = "application/xhtml+xml; charset=utf-8"
+    return response
+
+
 # Store discovered neighbors
 neighbors: dict[IPv4Address | IPv6Address, dict[str, Any]] = {}
 neighbors_lock = threading.Lock()
@@ -223,40 +232,56 @@ def listen_for_broadcasts() -> NoReturn:
         sock.bind(("", args.discovery_port))
 
         while True:
+            # 1. Receive data from socket
             try:
                 data, addr = sock.recvfrom(1024)
-                sender_ip = ip_address(addr[0])  # Convert to ip_address object
+            except (socket.error, OSError) as e:
+                logger.error(f"Network error receiving broadcast: {e}")
+                continue
+
+            # 2. Process sender IP
+            try:
+                sender_ip = ip_address(addr[0])
 
                 # Skip our own broadcasts
                 if sender_ip == LOCAL_IP:
                     continue
 
+            except ValueError as e:
+                logger.error(f"Invalid IP address received: {addr[0]} - {e}")
+                continue
+
+            # 3. Parse the message
+            try:
                 info = json.loads(data.decode())
+            except (UnicodeDecodeError, json.JSONDecodeError) as e:
+                logger.error(f"Failed to parse broadcast message: {e}")
+                continue
 
-                # Extract information from broadcast
-                hostname = info.get("hostname", f"unknown-{str(sender_ip)}")
-                public_key = info.get("public_key", "")
-                port = info.get("port", args.port)
+            # 4. Extract information from broadcast
+            hostname = info.get("hostname", f"unknown-{str(sender_ip)}")
+            public_key = info.get("public_key", "")
+            port = info.get("port", args.port)
 
-                # Store in memory cache
-                with neighbors_lock:
-                    neighbors[sender_ip] = {
-                        "ip": sender_ip,
-                        "hostname": hostname,
-                        "port": port,
-                        "public_key": public_key,
-                        "last_seen": datetime.now(),
-                    }
+            # 5. Update in-memory neighbors cache
+            with neighbors_lock:
+                neighbors[sender_ip] = {
+                    "ip": sender_ip,
+                    "hostname": hostname,
+                    "port": port,
+                    "public_key": public_key,
+                    "last_seen": datetime.now(),
+                }
 
-                # Store in persistent database
-                if public_key:  # Only store if public key is provided
+            # 6. Update persistent database if we have a public key
+            if public_key:
+                try:
                     # Create neighbor object
                     new_neighbor = Neighbour(
                         name=hostname,
                         ip_address=sender_ip,
                         public_key=public_key,
-                        # Default to untrusted
-                        trusted=False,
+                        trusted=False,  # Default to untrusted
                     )
 
                     # Check if we already know this neighbor
@@ -272,13 +297,12 @@ def listen_for_broadcasts() -> NoReturn:
                         logger.debug(
                             f"Received heartbeat from known neighbor: {hostname} at {sender_ip}"
                         )
-                else:
-                    logger.warning(
-                        f"Received broadcast without public key from {sender_ip}, ignoring for security"
-                    )
-
-            except Exception as e:
-                logger.error(f"Error receiving discovery broadcast: {e}")
+                except ValueError as e:
+                    logger.error(f"Error with neighbor data values: {e}")
+            else:
+                logger.warning(
+                    f"Received broadcast without public key from {sender_ip}, ignoring for security"
+                )
 
 
 def cleanup_neighbors() -> NoReturn:
@@ -412,7 +436,6 @@ def trust_neighbor(ip: str) -> Response | tuple[Response, int]:
         flash(f"Error: {str(e)}", "error")
 
     return redirect(url_for("dashboard"))
-    return redirect(url_for("dashboard"))
 
 
 @app.route("/neighbors/<ip>/untrust", methods=["POST"])
@@ -433,7 +456,6 @@ def untrust_neighbor(ip: str) -> Response | tuple[Response, int]:
         logger.error(f"Error untrusting neighbor: {e}")
         flash(f"Error: {str(e)}", "error")
 
-    return redirect(url_for("dashboard"))
     return redirect(url_for("dashboard"))
 
 

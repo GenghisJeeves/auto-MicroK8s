@@ -37,6 +37,9 @@ pyright = "^1.1.401"
 types-requests = "^2.32.0.20250515"
 scipy-stubs = "^1.15.3.0"
 prospector = {extras = ["with-bandit"], version = "^1.17.1"}
+lxml = "^5.4.0"
+hypothesis = "^6.132.0"
+types-lxml = "^2025.3.30"
 [tool.pyright]
 exclude = [
     "**/migrations",

@@ -119,7 +119,7 @@ def get_local_ip() -> IPv4Address | IPv6Address:
     try:
         # Create a temporary socket to determine our IP
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("google.com", 80))
+        s.connect(("aw6.uk", 80))
         ip = s.getsockname()[0]
         s.close()
         return ip_address(ip)
@@ -338,7 +338,9 @@ def handle_secure_message(message: dict[str, Any]) -> bool:
     global cluster_status
 
     try:
-        if message.get("type") == "cluster_join":
+        message_type = message.get("type", "")
+
+        if message_type == "cluster_join":
             join_command = message.get("command")
             if join_command:
                 logger.info(f"Received cluster join command: {join_command}")
@@ -355,6 +357,57 @@ def handle_secure_message(message: dict[str, Any]) -> bool:
                 )
                 join_thread.start()
                 return True
+
+        elif message_type == "trust_request":
+            # Handle trust request
+            sender_ip = message.get("sender_ip")
+            sender_hostname = message.get("sender_hostname")
+            sender_public_key = message.get("sender_public_key")
+
+            if sender_ip and sender_hostname and sender_public_key:
+                # Convert IP string to IP address object
+                try:
+                    ip_obj = ip_address(sender_ip)
+
+                    # Check if we already have any trust relationships
+                    trusted_neighbors = get_trusted_neighbours()
+                    if len(trusted_neighbors) > 0:
+                        logger.warning(
+                            f"Ignoring automatic trust request from {sender_hostname} ({sender_ip}) - we already have trusted neighbors"
+                        )
+                        return False
+
+                    # Create neighbor object
+                    new_neighbor = Neighbour(
+                        name=sender_hostname,
+                        ip_address=ip_obj,
+                        public_key=sender_public_key,
+                        trusted=True,  # Set to trusted since this is a bidirectional trust
+                    )
+
+                    # Check if we already know this neighbor
+                    existing = get_neighbour_by_ip(ip_obj)
+                    if existing:
+                        # Just update the trust status
+                        set_neighbour_trusted(ip_obj, True)
+                        logger.info(
+                            f"Auto-trusting existing neighbor: {sender_hostname} at {sender_ip}"
+                        )
+                    else:
+                        # Add to database
+                        add_neighbour(new_neighbor)
+                        logger.info(
+                            f"Auto-trusting new neighbor: {sender_hostname} at {sender_ip}"
+                        )
+
+                    flash(
+                        f"Automatically trusted neighbor {sender_hostname} ({sender_ip})",
+                        "success",
+                    )
+                    return True
+                except ValueError:
+                    logger.error(f"Invalid IP address in trust request: {sender_ip}")
+                    return False
 
         return False
     except Exception as e:
@@ -681,6 +734,52 @@ def api_secure_message() -> Response | tuple[Response, int]:
     except Exception as e:
         logger.error(f"Error processing secure message: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+def send_trust_request(neighbor_ip: IPv4Address | IPv6Address) -> bool:
+    """
+    Send a request to establish bidirectional trust with a neighbor
+
+    Args:
+        neighbor_ip: The IP address of the neighbor to request trust from
+
+    Returns:
+        True if the request was sent successfully, False otherwise
+    """
+    try:
+        # Get neighbor from database
+        neighbor = get_neighbour_by_ip(neighbor_ip)
+        if not neighbor:
+            logger.error(f"Cannot send trust request: neighbor {neighbor_ip} not found")
+            return False
+
+        # Create the trust request message
+        message = {
+            "type": "trust_request",
+            "sender_ip": str(LOCAL_IP),
+            "sender_hostname": LOCAL_HOSTNAME,
+            "sender_public_key": get_public_key_base64(),
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        # Send the message
+        from .neighbours import send_secure_message
+
+        # For a trust request, we need to temporarily mark the neighbor as trusted
+        # to allow the secure message to be sent
+        original_trust_status = neighbor.trusted
+        neighbor.trusted = True
+
+        result = send_secure_message(neighbor, message)
+
+        # Restore original trust status if we didn't really trust them yet
+        if not original_trust_status:
+            neighbor.trusted = original_trust_status
+
+        return result is not None
+    except Exception as e:
+        logger.error(f"Error sending trust request: {e}")
+        return False
 
 
 def main() -> None:

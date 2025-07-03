@@ -9,6 +9,7 @@
     "cSpell.words": [
         "argcomplete",
         "arww",
+        "avahi",
         "bootcmd",
         "byobu",
         "checkpw",
@@ -22,10 +23,13 @@
         "ensurepath",
         "errorlevel",
         "findstr",
+        "Frun",
+        "Fsnapd",
         "gensalt",
         "gethostname",
         "hashpw",
         "jsonify",
+        "keygen",
         "lastrowid",
         "levelname",
         "microk",
@@ -39,8 +43,10 @@
         "pwauth",
         "REUSEADDR",
         "runcmd",
+        "sdbus",
         "setlocal",
         "setuptools",
+        "unixsocket",
         "urandom",
         "venv"
     ]

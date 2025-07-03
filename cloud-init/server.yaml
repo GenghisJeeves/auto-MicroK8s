@@ -93,17 +93,16 @@ write_files:
   - content: |
       #!/bin/sh
       echo "\e[H\e[2J" > /etc/issue
-      echo "\e[0;31m" >> /etc/issue
-      echo "      __          ____  " >> /etc/issue
-      echo "     /\\\\ \\\\        / / /  " >> /etc/issue
-      echo "    /  \\\\ \\\\  /\\\\  / / /_  " >> /etc/issue
-      echo "   / /\\\\ \\\\ \\\\/  \\\\/ / '_ \\\\ " >> /etc/issue
-      echo "  / ____ \\\\  /\\\\  /| (_) |" >> /etc/issue
-      echo " /_/    \\\\_\\\\/  \\\\/  \\\\___/ " >> /etc/issue
-      echo "\e[0;35m" >> /etc/issue
+      echo "\e[0;91m" >> /etc/issue
+      echo " █████  ██     ██  ██████  " >> /etc/issue
+      echo "██   ██ ██     ██ ██       " >> /etc/issue
+      echo "███████ ██  █  ██ ███████  " >> /etc/issue
+      echo "██   ██ ██ ███ ██ ██    ██ " >> /etc/issue
+      echo "██   ██  ███ ███   ██████  " >> /etc/issue
+      echo "\e[0;96m" >> /etc/issue
       echo -n "☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁"  >> /etc/issue
       echo "☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁" >> /etc/issue
-      echo "\e[1;34m-----BEGIN SSH HOST KEY FINGERPRINTS-----" >> /etc/issue
+      echo "\e[1;32m-----BEGIN SSH HOST KEY FINGERPRINTS-----" >> /etc/issue
       ssh-keygen -l -f /etc/ssh/ssh_host_ecdsa_key.pub >> /etc/issue
       ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub >> /etc/issue
       ssh-keygen -l -f /etc/ssh/ssh_host_rsa_key.pub >> /etc/issue
@@ -112,10 +111,10 @@ write_files:
       echo -n "Server IPs: " >> /etc/issue
       hostname -I >> /etc/issue
       microk8s version >> /etc/issue
-      echo "\e[0;35m" >> /etc/issue
+      echo "\e[0;96m" >> /etc/issue
       echo -n "☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁"  >> /etc/issue
       echo "☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁ \e[0m" >> /etc/issue
-      echo -n "\l" >> /etc/issue
+      echo -n "\l " >> /etc/issue
     path: /etc/networkd-dispatcher/routable.d/update-issue
     permissions: "0755"
 

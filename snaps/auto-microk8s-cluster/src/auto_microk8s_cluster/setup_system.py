@@ -71,13 +71,11 @@ def is_snap_installed(snap_name: str) -> bool:
         return False
 
 
-def install_snap(
-    snap_name: str,
-) -> bool:
+def install_snap(snap_name: str, channel: str = "stable") -> bool:
     """Install a snap using the snapd API."""
     try:
         logger.info(f"Installing {snap_name} snap...")
-        data = {"action": "install", "channel": "stable"}
+        data = {"action": "install", "channel": channel}
 
         response = connect_to_snapd("POST", f"/v2/snaps/{snap_name}", data)
 
@@ -116,7 +114,7 @@ def is_microk8s_installed() -> bool:
 
 def install_microk8s() -> bool:
     """Install MicroK8s snap."""
-    return install_snap("microk8s")
+    return install_snap("microk8s", "1.32-strict")
 
 
 def is_avahi_installed() -> bool:

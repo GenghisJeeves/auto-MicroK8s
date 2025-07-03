@@ -4,11 +4,14 @@ import json
 import logging
 import os
 import secrets
+import socket
 import sqlite3
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
+from ipaddress import IPv4Address, IPv6Address, ip_address
 from pathlib import Path
 from typing import Any
 
@@ -210,7 +213,7 @@ def get_public_key_base64() -> str:
 
 
 def send_secure_message(
-    neighbour: Neighbour, message: dict[str, Any]
+    neighbour: Neighbour, message: dict[str, Any], bypass_trust_check: bool = False
 ) -> dict[str, str] | None:
     """
     Securely send a message to a neighbor using X25519 for key exchange
@@ -219,12 +222,17 @@ def send_secure_message(
     Args:
         neighbour: The Neighbour object to send to
         message: Dictionary containing the message to send
+        bypass_trust_check: If True, skip the trust check (used for trust requests)
 
     Returns:
         Response message dictionary or None if failed
     """
-    # Check if neighbor is trusted
-    if not neighbour.trusted:
+    # Check if neighbor is trusted, unless bypassing for a trust request
+    if (
+        not bypass_trust_check
+        and not neighbour.trusted
+        and message.get("type") != "trust_request"
+    ):
         logger.warning(f"Cannot send message to untrusted neighbor: {neighbour.name}")
         return None
 
@@ -548,6 +556,51 @@ def cleanup_stale_neighbours(max_age_hours: int = 24) -> int:
             (max_age_hours,),
         )
         return cursor.rowcount
+
+
+def get_local_ip() -> IPv4Address | IPv6Address:
+    try:
+        # Create a temporary socket to determine our IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("aw6.uk", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip_address(ip)
+    except Exception as e:
+        logger.error(f"Error getting local IP: {e}")
+        return ip_address("127.0.0.1")
+
+
+def check_neighbor_trusts_us(neighbour: Neighbour) -> bool:
+    """
+    Check if a neighbor trusts us by sending a status request
+
+    Args:
+        neighbour: The neighbor to check
+
+    Returns:
+        True if the neighbor trusts us, False otherwise
+    """
+    if not neighbour.trusted:
+        return False
+
+    try:
+        # Send a status request
+        local_ip: IPv4Address | IPv6Address = get_local_ip()
+        message = {
+            "type": "trust_status_request",
+            "sender_ip": str(local_ip),
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        response = send_secure_message(neighbour, message)
+        if response:
+            return bool(response.get("trusts_us", False))
+
+        return False
+    except Exception as e:
+        logger.error(f"Error checking if neighbor trusts us: {e}")
+        return False
 
 
 # Initialize database and key pair when module is imported

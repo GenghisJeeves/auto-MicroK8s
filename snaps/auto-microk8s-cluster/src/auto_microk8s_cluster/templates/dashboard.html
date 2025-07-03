@@ -111,19 +111,20 @@
                 <td>
                     {% if neighbor.trusted %}
                     <span class="badge badge-success">Trusted</span>
+                    {% if neighbor.trusts_us %}
+                    <span class="badge badge-info">Trusts Us</span>
+                    {% endif %}
                     {% else %}
                     <span class="badge badge-warning">Untrusted</span>
                     {% endif %}
                 </td>
                 <td>
                     {% if neighbor.trusted %}
-                    <form method="post" action="{{ url_for('untrust_neighbor', ip=neighbor.ip_address) }}"
-                        style="display:inline">
+                    <form method="post" action="{{ url_for('untrust_neighbor', ip=neighbor.ip_address) }}" style="display:inline">
                         <button type="submit" class="btn btn-danger btn-sm">Untrust</button>
                     </form>
                     {% else %}
-                    <form method="post" action="{{ url_for('trust_neighbor', ip=neighbor.ip_address) }}"
-                        style="display:inline">
+                    <form method="post" action="{{ url_for('trust_neighbor', ip=neighbor.ip_address) }}" style="display:inline">
                         <button type="submit" class="btn btn-success btn-sm">Trust</button>
                     </form>
                     {% endif %}

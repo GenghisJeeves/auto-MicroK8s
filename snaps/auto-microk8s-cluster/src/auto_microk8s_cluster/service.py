@@ -35,6 +35,7 @@ from .neighbours import (
     get_neighbour_by_ip,
     get_public_key_base64,
     get_trusted_neighbours,
+    send_secure_message,
     set_neighbour_trusted,
 )
 from .setup_system import setup_system
@@ -763,7 +764,6 @@ def send_trust_request(neighbor_ip: IPv4Address | IPv6Address) -> bool:
         }
 
         # Send the message
-        from .neighbours import send_secure_message
 
         # For a trust request, we need to temporarily mark the neighbor as trusted
         # to allow the secure message to be sent

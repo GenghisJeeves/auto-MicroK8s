@@ -82,8 +82,6 @@ def get_db_connection() -> Generator[sqlite3.Connection, None, None]:
             DATABASE_PATH,
             # Set timeout for busy waiting (in seconds)
             timeout=30.0,
-            # Enable foreign key constraints
-            detect_types=sqlite3.PARSE_DECLTYPES,
         )
         # Enable foreign keys
         _local.connection.execute("PRAGMA foreign_keys = ON")
@@ -214,7 +212,7 @@ def get_public_key_base64() -> str:
 
 def send_secure_message(
     neighbour: Neighbour, message: dict[str, Any], bypass_trust_check: bool = False
-) -> dict[str, str] | None:
+) -> dict[str, Any] | None:
     """
     Securely send a message to a neighbor using X25519 for key exchange
     and ChaCha20-Poly1305 for authenticated encryption.
@@ -270,7 +268,43 @@ def send_secure_message(
             "sender_key": get_public_key_base64(),
         }
 
-        return payload
+        # Actually send the message to the neighbor's API endpoint
+        import requests
+        from requests.exceptions import RequestException
+
+        try:
+            # Construct the URL using the neighbor's IP address and assumed port
+            url = f"http://{neighbour.ip_address}:8800/api/secure-message"
+
+            # Send the POST request with the encrypted payload
+            response = requests.post(
+                url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=10,  # Set a reasonable timeout
+            )
+
+            # Check if the request was successful
+            if response.status_code == 200:
+                logger.info(
+                    f"Message sent successfully to {neighbour.name} ({neighbour.ip_address})"
+                )
+
+                # If there's a response, try to parse it
+                try:
+                    return response.json()
+                except ValueError:
+                    logger.warning(f"Received non-JSON response from {neighbour.name}")
+                    return None
+            else:
+                logger.error(
+                    f"Failed to send message to {neighbour.name}: HTTP {response.status_code}"
+                )
+                return None
+
+        except RequestException as e:
+            logger.error(f"Network error sending message to {neighbour.name}: {e}")
+            return None
 
     except Exception as e:
         logger.error(f"Error sending secure message: {e}")

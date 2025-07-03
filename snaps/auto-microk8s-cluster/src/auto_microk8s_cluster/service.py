@@ -84,7 +84,7 @@ def parse_arguments():
 
 # Configure logging - use default args initially
 logger = logging.getLogger(__name__)
-logging.basicConfig(level="INFO")  # Default level until args are parsed
+# Don't call basicConfig yet - we'll do it after parsing args
 
 # Path for password storage
 SNAP_COMMON = os.environ.get(
@@ -784,9 +784,14 @@ def send_trust_request(neighbor_ip: IPv4Address | IPv6Address) -> bool:
 
 def main() -> None:
     """Main function for the service."""
-    # Update logging with the parsed arguments
+    # Set up logging properly based on arguments
+    # This works because it's the FIRST call to basicConfig
     logging.basicConfig(level=args.loglevel.upper())
-    logger.info("Logging now setup.")
+
+    # Also set the level of the logger directly to be sure
+    logger.setLevel(args.loglevel.upper())
+
+    logger.info("Logging now setup at level: %s", args.loglevel.upper())
 
     logger.info(
         f"Auto MicroK8s Cluster service started on {LOCAL_HOSTNAME} ({LOCAL_IP}:{args.port})"

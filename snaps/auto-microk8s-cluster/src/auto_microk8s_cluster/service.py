@@ -812,8 +812,15 @@ def main() -> None:
         cleanup_thread = threading.Thread(target=cleanup_neighbors, daemon=True)
         cleanup_thread.start()
 
-        # Start the web server
-        app.run(host="0.0.0.0", port=args.port, debug=False)
+        # Check if debug mode is requested
+        debug_mode = args.loglevel.lower() == "debug"
+
+        # If debug mode is enabled, log this
+        if debug_mode:
+            logger.info("Debug mode enabled for web server")
+
+        # Start the web server with debug mode matching loglevel
+        app.run(host="0.0.0.0", port=args.port, debug=debug_mode)
 
     except KeyboardInterrupt:
         logger.info("Auto MicroK8s Cluster service stopped.")

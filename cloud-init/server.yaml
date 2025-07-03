@@ -1,0 +1,122 @@
+#cloud-config
+
+# Update and upgrade packages on first boot
+package_update: true
+package_upgrade: true
+
+# Automatically reboot if required by updates
+package_reboot_if_required: true
+
+# Final message when cloud-init completes
+final_message: "System configuration completed after $UPTIME seconds"
+
+# Set the timezone
+timezone: Europe/London
+# Set the locale
+locale: en_GB.UTF-8
+# Set the keyboard layout
+keyboard:
+  layout: gb
+  variant: nodeadkeys
+
+# Install necessary packages
+packages:
+  - python3-pip
+  - python3-venv
+  - git
+  - fish
+
+# Run commands after packages are installed
+runcmd:
+  - [pip, install, pipx, --break-system-packages]
+  - [pipx, ensurepath, --global]
+  - [eval, "$(register-python-argcomplete pipx)"]
+  - [pipx, install, poetry, --global]
+  - [mkdir, -p, /opt/auto-microk8s-cluster]
+  - [cd, /opt/auto-microk8s-cluster]
+  - [git, clone, https://github.com/GenghisJeeves/auto-MicroK8s.git]
+  - [cd, /opt/auto-microk8s-cluster/auto-MicroK8s/snaps/auto-microk8s-cluster]
+  - [poetry, install]
+  - [poetry, run, auto-microk8s-cluster]
+
+# Run on boot
+bootcmd:
+  - [echo, "Starting auto-microk8s server"]
+  - [cd, /opt/auto-microk8s-cluster/auto-MicroK8s/snaps/auto-microk8s-cluster]
+  - [poetry, run, auto-microk8s-cluster]
+
+# Set the default user password
+users:
+  - name: arww24
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBuaobQ6v5aNuEhLrV5hBOJWMlpE7aGvudJwkgQlIrFc admin@aw6.uk
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    groups: sudo
+    shell: /bin/bash
+  - { name: nosshlogins, ssh_redirect_user: true }
+
+# Disable root password login
+disable_root: true
+# Disable password authentication for SSH
+ssh_pwauth: false
+
+write_files:
+  - content: |
+      function fish_right_prompt
+        set -l seconds (math "$CMD_DURATION / 1000")
+        if test "$CMD_DURATION" -gt 0
+          echo (set_color blue)"[$seconds s]"(set_color normal)
+        end
+      end
+    path: /etc/fish/conf.d/prompt.fish
+    permissions: "0644"
+  - content: |
+      # Set fish as default shell inside Byobu
+      /usr/bin/fish
+    path: /etc/byobu/shell
+    permissions: "0644"
+  - content: |
+      set -g default-shell /usr/bin/fish
+      set -g default-command /usr/bin/fish
+    path: /etc/byobu/keybindings.tmux
+    permissions: "0644"
+  - content: |
+      # Check if this is an interactive shell
+      if [ -t 1 ]; then
+        # Check if we're not already in a Byobu or Tmux session
+        if [ -z "$BYOBU_WINDOW" ] && [ -z "$TMUX" ]; then
+          export SHELL=/usr/bin/fish
+        fi
+      fi
+    path: /etc/profile.d/fish-default.sh
+    permissions: "0644"
+  - content: |
+      #!/bin/sh
+      echo "\e[H\e[2J" > /etc/issue
+      echo "\e[0;31m" >> /etc/issue
+      echo "      __          ____  " >> /etc/issue
+      echo "     /\\\\ \\\\        / / /  " >> /etc/issue
+      echo "    /  \\\\ \\\\  /\\\\  / / /_  " >> /etc/issue
+      echo "   / /\\\\ \\\\ \\\\/  \\\\/ / '_ \\\\ " >> /etc/issue
+      echo "  / ____ \\\\  /\\\\  /| (_) |" >> /etc/issue
+      echo " /_/    \\\\_\\\\/  \\\\/  \\\\___/ " >> /etc/issue
+      echo "\e[0;35m" >> /etc/issue
+      echo -n "☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁"  >> /etc/issue
+      echo "☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁" >> /etc/issue
+      echo "\e[1;34m-----BEGIN SSH HOST KEY FINGERPRINTS-----" >> /etc/issue
+      ssh-keygen -l -f /etc/ssh/ssh_host_ecdsa_key.pub >> /etc/issue
+      ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub >> /etc/issue
+      ssh-keygen -l -f /etc/ssh/ssh_host_rsa_key.pub >> /etc/issue
+      ssh-keygen -l -f /etc/ssh/ssh_host_dsa_key.pub >> /etc/issue
+      echo "-----END SSH HOST KEY FINGERPRINTS-----" >> /etc/issue
+      echo -n "Server IPs: " >> /etc/issue
+      hostname -I >> /etc/issue
+      microk8s version >> /etc/issue
+      echo "\e[0;35m" >> /etc/issue
+      echo -n "☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁"  >> /etc/issue
+      echo "☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁ \e[0m" >> /etc/issue
+      echo -n "\l" >> /etc/issue
+    path: /etc/networkd-dispatcher/routable.d/update-issue
+    permissions: "0755"
+
+byobu_by_default: enable

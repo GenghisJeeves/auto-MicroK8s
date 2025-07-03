@@ -24,6 +24,33 @@
     </table>
 </div>
 
+<!-- New Cluster Management Card -->
+<div class="card">
+    <div class="card-header">
+        <h2>Cluster Management</h2>
+    </div>
+    
+    <div style="padding: 15px;">
+        <p>Current trusted neighbors: <strong>{{ trusted_count }}</strong></p>
+        
+        {% if cluster_status %}
+            <div class="alert alert-info">
+                <p>Cluster status: {{ cluster_status }}</p>
+            </div>
+        {% endif %}
+        
+        {% if trusted_count >= 2 %}
+            <form method="post" action="{{ url_for('create_cluster') }}">
+                <button type="submit" class="btn btn-primary">Create K8s Cluster</button>
+            </form>
+            <p class="small text-muted" style="margin-top: 10px;">This will create a Kubernetes cluster with all trusted neighbors.</p>
+        {% else %}
+            <button class="btn btn-primary" disabled="disabled">Create K8s Cluster</button>
+            <p class="small text-warning" style="margin-top: 10px;">At least 2 trusted neighbors are required to create a cluster.</p>
+        {% endif %}
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header">
         <h2>Active Neighbors ({{ neighbor_count }})</h2>
@@ -110,10 +137,12 @@
     {% endif %}
 </div>
 
-<script>
+<script type="text/javascript">
+//<![CDATA[
     // Auto-refresh the page every 30 seconds
-    setTimeout(function () {
+    setTimeout(function() {
         window.location.reload();
     }, 30000);
+//]]>
 </script>
 {% endblock %}

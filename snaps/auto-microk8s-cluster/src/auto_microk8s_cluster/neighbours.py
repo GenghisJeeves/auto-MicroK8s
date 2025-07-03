@@ -367,7 +367,7 @@ def add_neighbour(neighbour: Neighbour) -> int | None:
 
         if result:
             logger.warning(
-                f"IP already esists please remove old entry if no longer in use {neighbour.name} at {ip_str}"
+                f"IP already exists please remove old entry if no longer in use {neighbour.name} at {ip_str}"
             )
         else:
             # Insert new neighbor

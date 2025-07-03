@@ -3,7 +3,7 @@ version: 0.1.0
 summary: Tool to automate microk8s cluster creation
 description: |
   This tool automates the creation of a microk8s clusters.
-  It auto detects neighbouring devices and joins them into the clusters.
+  It auto detects neighboring devices and joins them into the clusters.
   It is packaged in a snap to run on Ubuntu Core to allow a local cluster 
   to be created in minutes.
 confinement: devmode
@@ -12,6 +12,10 @@ base: core24
 plugs:
   snapd-control:
     interface: snapd-control
+  microk8s:
+    interface: content
+    content: microk8s
+    target: $SNAP/microk8s
 
 parts:
   auto-microk8s-cluster:

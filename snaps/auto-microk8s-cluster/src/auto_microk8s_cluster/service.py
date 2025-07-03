@@ -25,18 +25,22 @@ from flask import (
 )
 from werkzeug import Response
 
+from .build_cluster import build_microk8s_cluster, join_microk8s_cluster
+
 # Import neighbor functions and classes
 from .neighbours import (
     Neighbour,
     add_neighbour,
+    get_all_neighbours,
     get_neighbour_by_ip,
     get_public_key_base64,
+    get_trusted_neighbours,
     set_neighbour_trusted,
 )
 from .setup_system import setup_system
 
 # ToDo: Broadcast trusted keys in a message signed by this server's key
-# ToDo: If a broadcast is recieved from a trusted nighbour trust the keys that it trusts
+# ToDo: If a broadcast is received from a trusted neighbour trust the keys that it trusts
 
 
 # Define argument defaults - will be used when imported
@@ -322,6 +326,83 @@ def cleanup_neighbors() -> NoReturn:
                     del neighbors[ip]
 
 
+# Message handling for cluster commands
+# Add a global variable to track cluster status
+cluster_status = ""
+cluster_status_lock = threading.Lock()
+
+
+# Add a message handler function
+def handle_secure_message(message: dict[str, Any]) -> bool:
+    """Handle secure messages from other nodes"""
+    global cluster_status
+
+    try:
+        if message.get("type") == "cluster_join":
+            join_command = message.get("command")
+            if join_command:
+                logger.info(f"Received cluster join command: {join_command}")
+
+                # Update status
+                with cluster_status_lock:
+                    cluster_status = "Joining cluster..."
+
+                # Start a background thread to join the cluster
+                join_thread = threading.Thread(
+                    target=join_cluster_thread,
+                    args=(join_command,),
+                    daemon=True,
+                )
+                join_thread.start()
+                return True
+
+        return False
+    except Exception as e:
+        logger.error(f"Error handling secure message: {e}")
+        return False
+
+
+# Add a function to join a cluster in a background thread
+def join_cluster_thread(join_command: str) -> None:
+    """Join a cluster in a background thread"""
+    global cluster_status
+
+    try:
+        success = join_microk8s_cluster(join_command)
+
+        with cluster_status_lock:
+            if success:
+                cluster_status = "Successfully joined the cluster"
+            else:
+                cluster_status = "Failed to join the cluster"
+    except Exception as e:
+        logger.error(f"Error joining cluster: {e}")
+        with cluster_status_lock:
+            cluster_status = f"Error joining cluster: {str(e)}"
+
+
+# Add a function to create a cluster in a background thread
+def create_cluster_thread() -> None:
+    """Create a cluster in a background thread"""
+    global cluster_status
+
+    try:
+        with cluster_status_lock:
+            cluster_status = "Creating cluster..."
+
+        success = build_microk8s_cluster()
+
+        with cluster_status_lock:
+            if success:
+                cluster_status = "Successfully created the cluster"
+            else:
+                cluster_status = "Failed to create the cluster"
+    except Exception as e:
+        logger.error(f"Error creating cluster: {e}")
+        with cluster_status_lock:
+            cluster_status = f"Error creating cluster: {str(e)}"
+
+
 # Web Service Routes
 @app.route("/")
 def home() -> Response:
@@ -476,18 +557,18 @@ def dashboard():
         ]
 
     # Get all neighbors from the database
-    # This would get neighbors that have been seen and added to the database
-    # We're not implementing this function here, but it would retrieve neighbors
-    # from your persistent storage
-    # db_neighbors = get_all_neighbours()
-
-    # For testing purposes, we'll just use an empty list if the function doesn't exist
     try:
-        from .neighbours import get_all_neighbours
 
         db_neighbors = get_all_neighbours()
+        trusted_neighbors: list[Neighbour] = get_trusted_neighbours()
+        trusted_count = len(trusted_neighbors) if trusted_neighbors else 0
     except (ImportError, AttributeError):
         db_neighbors = []
+        trusted_count = 0
+
+    # Get current cluster status
+    with cluster_status_lock:
+        current_cluster_status = cluster_status
 
     return render_template(
         "dashboard.html",
@@ -497,6 +578,8 @@ def dashboard():
         active_neighbors=active_neighbors_list,
         neighbor_count=len(active_neighbors_list),
         db_neighbors=db_neighbors,
+        trusted_count=trusted_count,
+        cluster_status=current_cluster_status,
     )
 
 
@@ -545,6 +628,59 @@ def api_list_neighbors():
             "count": len(active_neighbors),
         }
     )
+
+
+# Add a route to create a cluster
+@app.route("/create-cluster", methods=["POST"])
+@login_required
+def create_cluster() -> Response:
+    """Create a Kubernetes cluster with trusted neighbors"""
+    try:
+        # Get trusted neighbors
+        trusted_neighbors = get_trusted_neighbours()
+
+        if len(trusted_neighbors) < 2:
+            flash(
+                "At least 2 trusted neighbors are required to create a cluster.",
+                "error",
+            )
+            return redirect(url_for("dashboard"))
+
+        # Start cluster creation in a background thread
+        cluster_thread = threading.Thread(
+            target=create_cluster_thread,
+            daemon=True,
+        )
+        cluster_thread.start()
+
+        flash("Cluster creation started. This may take a few minutes.", "info")
+    except Exception as e:
+        logger.error(f"Error starting cluster creation: {e}")
+        flash(f"Error starting cluster creation: {str(e)}", "error")
+
+    return redirect(url_for("dashboard"))
+
+
+# Add an endpoint to receive secure messages
+@app.route("/api/secure-message", methods=["POST"])
+def api_secure_message() -> Response | tuple[Response, int]:
+    """Handle secure messages from other nodes"""
+    if not session.get("authenticated"):
+        return jsonify({"error": "Not authenticated"}), 401
+
+    try:
+        message = request.json
+        if not message:
+            return jsonify({"error": "Invalid message format"}), 400
+
+        success = handle_secure_message(message)
+        if success:
+            return jsonify({"status": "success"})
+        else:
+            return jsonify({"error": "Failed to process message"}), 400
+    except Exception as e:
+        logger.error(f"Error processing secure message: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 def main() -> None:

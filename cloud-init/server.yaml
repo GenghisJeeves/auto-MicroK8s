@@ -69,7 +69,7 @@ write_files:
       [Service]
       Type=simple
       WorkingDirectory=/opt/auto-microk8s-cluster/auto-MicroK8s/snaps/auto-microk8s-cluster
-      ExecStart=/usr/local/bin/poetry run auto-microk8s-cluster --loglevel info
+      ExecStart=git fetch; /usr/local/bin/poetry run auto-microk8s-cluster --loglevel info
       Restart=on-failure
       RestartSec=10
       StandardOutput=journal

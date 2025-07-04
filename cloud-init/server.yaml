@@ -37,13 +37,11 @@ runcmd:
   - [git, clone, https://github.com/GenghisJeeves/auto-MicroK8s.git]
   - [cd, /opt/auto-microk8s-cluster/auto-MicroK8s/snaps/auto-microk8s-cluster]
   - [poetry, install]
-  - [poetry, run, auto-microk8s-cluster]
+  # Enable and start the auto-microk8s service
+  - [systemctl, enable, auto-microk8s.service]
+  - [systemctl, start, auto-microk8s.service]
 
-# Run on boot
-bootcmd:
-  - [echo, "Starting auto-microk8s server"]
-  - [cd, /opt/auto-microk8s-cluster/auto-MicroK8s/snaps/auto-microk8s-cluster]
-  - [poetry, run, auto-microk8s-cluster]
+# Removing bootcmd section as it's replaced by the systemd service
 
 # Set the default user password
 users:
@@ -61,6 +59,29 @@ disable_root: true
 ssh_pwauth: false
 
 write_files:
+  # Add systemd service file
+  - content: |
+      [Unit]
+      Description=Auto MicroK8s Cluster Service
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      WorkingDirectory=/opt/auto-microk8s-cluster/auto-MicroK8s/snaps/auto-microk8s-cluster
+      ExecStart=/usr/local/bin/poetry run auto-microk8s-cluster --loglevel info
+      Restart=on-failure
+      RestartSec=10
+      StandardOutput=journal
+      StandardError=journal
+      User=root
+      Environment=PYTHONUNBUFFERED=1
+
+      [Install]
+      WantedBy=multi-user.target
+    path: /etc/systemd/system/auto-microk8s.service
+    permissions: "0644"
+
   - content: |
       function fish_right_prompt
         set -l seconds (math "$CMD_DURATION / 1000")

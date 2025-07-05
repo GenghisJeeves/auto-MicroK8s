@@ -1106,26 +1106,15 @@ def send_trust_request(neighbor_ip: IPv4Address | IPv6Address) -> bool:
             "sender_public_key": get_public_key_base64(),
             "timestamp": datetime.now().isoformat(),
         }
-        logger.debug("Created trust_request message")
+        logger.debug(f"Created trust_request message {message}")
 
         # Send the message
-        logger.debug(f"Original trust status: {neighbor.trusted}")
-        # For a trust request, we need to temporarily mark the neighbor as trusted
-        # to allow the secure message to be sent
-        original_trust_status = neighbor.trusted
-        neighbor.trusted = True
-        logger.debug(f"Temporarily set trust to True for sending")
 
         logger.info(
             f"Sending trust request to: {neighbor.name} ({neighbor.ip_address})"
         )
         result = send_secure_message(neighbor, message)
         logger.debug(f"Trust request result: {result is not None}")
-
-        # Restore original trust status if we didn't really trust them yet
-        if not original_trust_status:
-            logger.debug("Restoring original trust status")
-            neighbor.trusted = original_trust_status
 
         return result is not None
     except Exception as e:

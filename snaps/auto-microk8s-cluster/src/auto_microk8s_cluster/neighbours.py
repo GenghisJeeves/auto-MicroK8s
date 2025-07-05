@@ -339,7 +339,7 @@ def receive_secure_message(
                 # We don't know the sender.
                 # We're bypassing trust check so we can trust the embedded key
                 logger.info(
-                    f"Received message from unknown sender key: {sender_key_base64[:16]} - Continuing as bypass_trust_check in force."
+                    f"Received message from unknown sender key: {sender_key_base64[:16]}... - Continuing as bypass_trust_check in force."
                 )
 
             else:

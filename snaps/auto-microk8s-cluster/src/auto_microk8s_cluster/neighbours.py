@@ -328,7 +328,6 @@ def receive_secure_message(
     try:
         # Find the neighbor by public key
         sender = None
-        sender_key_base64 = ""
         all_neighbours = get_all_neighbours()
         for n in all_neighbours:
             if n.public_key == sender_key_base64:

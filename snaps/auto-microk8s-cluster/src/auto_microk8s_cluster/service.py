@@ -932,20 +932,8 @@ def create_cluster() -> Response:
 @app.route("/api/secure-message", methods=["POST"])
 def api_secure_message() -> Response | tuple[Response, int]:
     """Handle secure messages from other nodes"""
-    # If password is set, session must be authenticated
-    if is_password_set() and not session.get("authenticated"):
-        logger.warning(
-            "Password is set so access to secure message endpoint must be authenticated"
-        )
-        return jsonify({"error": "Not authenticated"}), 401
-    elif not is_password_set():
-        logger.info(
-            "Password is not set, allowing access to secure message endpoint without authentication"
-        )
-    else:
-        # Invalid state, user cannot be authenticated if password is not set
-        logger.error("Not possible to be authenticated if password is not set")
-        return jsonify({"error": "Invalid state"}), 500
+
+    # No need to be authenticated as the authentication is done at the message level
 
     try:
         logger.debug(f"Received secure message request {request}")

@@ -496,9 +496,17 @@ def handle_secure_message(message: dict[str, Any]) -> bool:
                             )
                             return False
                         else:
+
+                            def delayed_request():
+                                # Give the other node time to process our trust response
+                                logger.debug(
+                                    f"Waiting 3 seconds before requesting password from {sender_hostname}"
+                                )
+                                time.sleep(3)
+                                request_password_from_neighbor(current)
+
                             request_password_thread = threading.Thread(
-                                target=request_password_from_neighbor,
-                                args=(current,),
+                                target=delayed_request,
                                 daemon=True,
                             )
                             request_password_thread.start()
@@ -954,7 +962,10 @@ def api_secure_message() -> Response | tuple[Response, int]:
         nonce = encrypted_payload.get("nonce")
         ciphertext = encrypted_payload.get("ciphertext")
         sender_key = encrypted_payload.get("sender_key")
-
+        logger.debug(
+            "Extracted encrypted message parts: "
+            f"nonce={nonce}, ciphertext={ciphertext}, sender_key={sender_key}"
+        )
         if not all([nonce, ciphertext, sender_key]):
             logger.error("Missing required encryption fields in message")
             return jsonify({"error": "Invalid encrypted message format"}), 400

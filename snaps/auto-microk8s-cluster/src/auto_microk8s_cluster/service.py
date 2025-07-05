@@ -488,12 +488,20 @@ def handle_secure_message(message: dict[str, Any]) -> bool:
                         logger.debug(
                             f"Starting thread to request password from {sender_hostname}"
                         )
-                        request_password_thread = threading.Thread(
-                            target=request_password_from_neighbor,
-                            args=(new_neighbor if not existing else existing,),
-                            daemon=True,
-                        )
-                        request_password_thread.start()
+                        current = get_neighbour_by_ip(ip_obj)
+                        # Use a thread to avoid blocking the main thread
+                        if not current:
+                            logger.error(
+                                f"Something has prevented the new neighbour being saved"
+                            )
+                            return False
+                        else:
+                            request_password_thread = threading.Thread(
+                                target=request_password_from_neighbor,
+                                args=(current,),
+                                daemon=True,
+                            )
+                            request_password_thread.start()
 
                         flash(
                             f"Automatically trusted neighbor {sender_hostname} ({sender_ip})",

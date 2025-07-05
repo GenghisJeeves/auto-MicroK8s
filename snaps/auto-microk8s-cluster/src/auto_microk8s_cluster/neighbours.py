@@ -30,18 +30,21 @@ from cryptography.hazmat.primitives.serialization import (
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Default database path
-SNAP_COMMON = os.environ.get(
+# Default data store path, use either the SNAP_COMMON environment variable if running inside a snap
+# Use the user's home directory if not
+# This allows the script to work both inside and outside of a snap environment
+# The default path is ~/.local/share/auto-microk8s
+BASE_PATH = os.environ.get(
     "SNAP_COMMON",
-    str(Path.home() / ".local" / "share" / "auto-microk8s"),
+    os.path.join(Path.home(), ".local", "share", "auto-microk8s"),
 )
 DATABASE_PATH = os.path.join(
-    SNAP_COMMON,
+    BASE_PATH,
     "neighbours.db",
 )
 
 # Path for storing our key pair
-KEY_PATH = os.path.join(SNAP_COMMON, "keys")
+KEY_PATH = os.path.join(BASE_PATH, "keys")
 PRIVATE_KEY_PATH = os.path.join(KEY_PATH, "private.key")
 PUBLIC_KEY_PATH = os.path.join(KEY_PATH, "public.key")
 

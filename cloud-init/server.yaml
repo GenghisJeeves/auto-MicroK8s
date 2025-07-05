@@ -32,10 +32,9 @@ runcmd:
   - [pipx, ensurepath, --global]
   - [eval, "$(register-python-argcomplete pipx)"]
   - [pipx, install, poetry, --global]
-  - [mkdir, -p, /opt/auto-microk8s-cluster]
-  - [cd, /opt/auto-microk8s-cluster]
+  - [cd, /opt]
   - [git, clone, https://github.com/GenghisJeeves/auto-MicroK8s.git]
-  - [cd, /opt/auto-microk8s-cluster/auto-MicroK8s/snaps/auto-microk8s-cluster]
+  - [cd, /opt/auto-MicroK8s/snaps/auto-microk8s-cluster]
   - [poetry, install]
   # Enable and start the auto-microk8s service
   - [systemctl, enable, auto-microk8s.service]
@@ -68,8 +67,8 @@ write_files:
 
       [Service]
       Type=simple
-      WorkingDirectory=/opt/auto-microk8s-cluster/auto-MicroK8s/snaps/auto-microk8s-cluster
-      ExecStart=git fetch; /usr/local/bin/poetry run auto-microk8s-cluster --loglevel info
+      WorkingDirectory=/opt/auto-MicroK8s/snaps/auto-microk8s-cluster
+      ExecStart=/usr/local/bin/poetry run auto-microk8s-cluster --loglevel info
       Restart=on-failure
       RestartSec=10
       StandardOutput=journal
@@ -81,7 +80,6 @@ write_files:
       WantedBy=multi-user.target
     path: /etc/systemd/system/auto-microk8s.service
     permissions: "0644"
-
   - content: |
       function fish_right_prompt
         set -l seconds (math "$CMD_DURATION / 1000")

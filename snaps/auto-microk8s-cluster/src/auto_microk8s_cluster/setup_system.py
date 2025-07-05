@@ -229,6 +229,75 @@ def setup_system() -> bool:
     return success
 
 
+def hold_snap_updates(snap_name: str, duration: str = "forever") -> bool:
+    """
+    Prevent a snap from receiving automatic updates for a specified duration.
+
+    Args:
+        snap_name: Name of the snap to hold updates for
+        duration: Duration for the hold (e.g., "1h", "2d", "1w", "forever")
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        logger.info(f"Holding updates for {snap_name} snap for duration: {duration}")
+
+        # Create the request data
+        data: dict[str, str | list[str]] = {
+            "action": "refresh",
+            "snap-ids": [snap_name],
+            "hold": duration,
+        }
+
+        # Send the request to the snapd API
+        response = connect_to_snapd("POST", "/v2/snaps", data)
+
+        # Check if the request was successful
+        if response.get("type") == "async":
+            change_id = response.get("change")
+            logger.info(
+                f"Hold request initiated for {snap_name} (change ID: {change_id})"
+            )
+
+            # Wait for the operation to complete
+            while True:
+                change_response = connect_to_snapd("GET", f"/v2/changes/{change_id}")
+                status = change_response.get("result", {}).get("status")
+
+                if status == "Done":
+                    logger.info(f"Successfully held updates for {snap_name} {duration}")
+                    return True
+                elif status in ["Error", "Abort"]:
+                    logger.error(
+                        f"Failed to hold updates for {snap_name}: {change_response}"
+                    )
+                    return False
+
+                # Wait before checking again
+                time.sleep(2)
+        else:
+            logger.error(f"Failed to initiate hold for {snap_name}: {response}")
+            return False
+    except Exception as e:
+        logger.error(f"Error holding updates for {snap_name}: {e}")
+        return False
+
+
+def hold_microk8s_updates(duration: str = "forever") -> bool:
+    """
+    Prevent MicroK8s from receiving automatic updates.
+
+    Args:
+        duration: Duration for the hold (e.g., "1h", "2d", "1w", "forever")
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    logger.info(f"Holding MicroK8s updates for {duration}")
+    return hold_snap_updates("microk8s", duration)
+
+
 if __name__ == "__main__":
     # Configure logging for standalone use
     logging.basicConfig(level=logging.INFO)

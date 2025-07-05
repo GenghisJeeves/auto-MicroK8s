@@ -36,6 +36,7 @@ from .neighbours import (
     get_neighbour_by_ip,
     get_public_key_base64,
     get_trusted_neighbours,
+    receive_secure_message,
     send_secure_message,
     set_neighbour_trusted,
 )
@@ -58,7 +59,7 @@ args = Args()
 
 
 def parse_arguments():
-    """Parse command line arguments only when script is run directly"""
+    """Parse command line arguments"""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-log",
@@ -79,8 +80,18 @@ def parse_arguments():
         help="Port for discovery broadcasts, default=8801",
     )
 
+    # Parse sys.argv directly to ensure arguments are always processed
+    import sys
+
+    parsed_args = parser.parse_args(sys.argv[1:])
+
+    # Update global args
     global args
-    args = parser.parse_args()
+    args.loglevel = parsed_args.loglevel
+    args.port = parsed_args.port
+    args.discovery_port = parsed_args.discovery_port
+
+    return args
 
 
 # Configure logging - use default args initially
@@ -934,24 +945,41 @@ def api_secure_message() -> Response | tuple[Response, int]:
     else:
         # Invalid state, user cannot be authenticated if password is not set
         logger.error("Not possible to be authenticated if password is not set")
-        return (
-            jsonify(
-                {
-                    "error": "It should not be possible to be authenticated when no password is set, please file a bug report."
-                }
-            ),
-            500,
-        )
+        return jsonify({"error": "Invalid state"}), 500
 
     try:
-        message = request.json
-        if not message:
+        logger.debug(f"Received secure message request {request}")
+        encrypted_payload = request.json
+        if not encrypted_payload:
+            logger.error(f"Received message {request} is empty or not JSON")
             return jsonify({"error": "Invalid message format"}), 400
 
-        success = handle_secure_message(message)
+        # Extract encrypted message parts
+        nonce = encrypted_payload.get("nonce")
+        ciphertext = encrypted_payload.get("ciphertext")
+        sender_key = encrypted_payload.get("sender_key")
+
+        if not all([nonce, ciphertext, sender_key]):
+            logger.error("Missing required encryption fields in message")
+            return jsonify({"error": "Invalid encrypted message format"}), 400
+
+        # Decrypt the message first
+
+        decrypted_message = receive_secure_message(
+            sender_key, nonce, ciphertext, bypass_trust_check=not is_password_set()
+        )
+
+        if not decrypted_message:
+            logger.error("Failed to decrypt message")
+            return jsonify({"error": "Message decryption failed"}), 400
+
+        # Now process the decrypted message
+        logger.debug(f"Decrypted message: {decrypted_message}")
+        success = handle_secure_message(decrypted_message)
         if success:
             return jsonify({"status": "success"})
         else:
+            logger.error(f"Failed to process decrypted message")
             return jsonify({"error": "Failed to process message"}), 400
     except Exception as e:
         logger.error(f"Error processing secure message: {e}")
@@ -1119,14 +1147,29 @@ def send_trust_request(neighbor_ip: IPv4Address | IPv6Address) -> bool:
 
 def main() -> None:
     """Main function for the service."""
-    # Set up logging properly based on arguments
-    # This works because it's the FIRST call to basicConfig
-    logging.basicConfig(level=args.loglevel.upper())
+    # Always parse arguments
+    parse_arguments()
+    print(f"Specified log level {args.loglevel.upper()}")
+    # Configure the root logger
+    logging.basicConfig(
+        level=args.loglevel.upper(),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
 
-    # Also set the level of the logger directly to be sure
+    # Also configure the module logger
     logger.setLevel(args.loglevel.upper())
 
+    # Configure Flask's logger
+    flask_logger = logging.getLogger("werkzeug")
+    flask_logger.setLevel(args.loglevel.upper())
+
+    # Log that we've configured logging
     logger.info("Logging now setup at level: %s", args.loglevel.upper())
+
+    # Test debug logging is working
+    logger.debug(
+        "This is a debug message that should appear if debug logging is enabled"
+    )
 
     logger.info(
         f"Auto MicroK8s Cluster service started on {LOCAL_HOSTNAME} ({LOCAL_IP}:{args.port})"
@@ -1169,6 +1212,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # Only parse arguments when running directly
-    parse_arguments()
     main()
+else:
+    # Even when imported as a module, ensure arguments are parsed
+    # This runs when the module is imported, ensuring args are available
+    parse_arguments()

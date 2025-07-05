@@ -216,14 +216,6 @@ def send_secure_message(
     """
     Securely send a message to a neighbor using X25519 for key exchange
     and ChaCha20-Poly1305 for authenticated encryption.
-
-    Args:
-        neighbour: The Neighbour object to send to
-        message: Dictionary containing the message to send
-        bypass_trust_check: If True, skip the trust check (used for trust requests)
-
-    Returns:
-        Response message dictionary or None if failed
     """
     # Check if neighbor is trusted, unless bypassing for a trust request
     if (
@@ -255,8 +247,11 @@ def send_secure_message(
         # Generate a nonce
         nonce = secrets.token_bytes(12)  # 12 bytes is the required nonce size
 
-        # Serialize the message
+        # Serialize the message to JSON using double quotes (default for json.dumps)
         message_json = json.dumps(message).encode("utf-8")
+
+        # Log the properly formatted JSON message for debugging
+        logger.debug(f"Sending JSON message: {message_json.decode('utf-8')}")
 
         # Encrypt the message
         encrypted_message = cipher.encrypt(nonce, message_json, None)
@@ -276,10 +271,10 @@ def send_secure_message(
             # Construct the URL using the neighbor's IP address and assumed port
             url = f"http://{neighbour.ip_address}:8800/api/secure-message"
 
-            # Send the POST request with the encrypted payload
+            # Send the POST request with the encrypted payload - requests.post handles JSON encoding properly
             response = requests.post(
                 url,
-                json=payload,
+                json=payload,  # This uses json.dumps internally with proper double quotes
                 headers={"Content-Type": "application/json"},
                 timeout=10,  # Set a reasonable timeout
             )
@@ -297,6 +292,7 @@ def send_secure_message(
                     logger.warning(f"Received non-JSON response from {neighbour.name}")
                     return None
             else:
+                # Fix the error log to not print the raw payload which shows single quotes
                 logger.error(
                     f"Failed to send message to {neighbour.name}: HTTP {response.status_code}"
                 )
@@ -312,7 +308,10 @@ def send_secure_message(
 
 
 def receive_secure_message(
-    sender_key_base64: str, nonce_base64: str, ciphertext_base64: str
+    sender_key_base64: str,
+    nonce_base64: str,
+    ciphertext_base64: str,
+    bypass_trust_check: bool = False,
 ) -> dict[str, Any] | None:
     """
     Receive and decrypt a secure message from a neighbor.
@@ -321,6 +320,7 @@ def receive_secure_message(
         sender_key_base64: Base64-encoded public key of the sender
         nonce_base64: Base64-encoded nonce
         ciphertext_base64: Base64-encoded encrypted message
+        bypass_trust_check: If True, accept messages from untrusted neighbors
 
     Returns:
         Decrypted message dictionary or None if failed
@@ -328,6 +328,7 @@ def receive_secure_message(
     try:
         # Find the neighbor by public key
         sender = None
+        sender_key_base64 = ""
         all_neighbours = get_all_neighbours()
         for n in all_neighbours:
             if n.public_key == sender_key_base64:
@@ -335,18 +336,36 @@ def receive_secure_message(
                 break
 
         if not sender:
-            logger.warning(
-                f"Received message from unknown sender key: {sender_key_base64[:16]}..."
-            )
-            return None
+            if bypass_trust_check:
+                # We don't know the sender.
+                # We're bypassing trust check so we can trust the embedded key
+                logger.info(
+                    f"Received message from unknown sender key: {sender_key_base64[:16]} - Continuing as bypass_trust_check in force."
+                )
 
+            else:
+                # If we don't know the sender, log a warning and ignore the message
+                logger.warning(
+                    f"Received message from unknown sender key: {sender_key_base64[:16]}..."
+                )
+                return None
         # Check if neighbor is trusted
-        if not sender.trusted:
-            logger.warning(f"Ignoring message from untrusted neighbor: {sender.name}")
-            return None
+        elif not sender.trusted:
+            # If bypass_trust_check
+            if bypass_trust_check:
+                logger.debug(
+                    f"Processing message from untrusted neighbor: {sender.name} (bypass trust check)"
+                )
+            else:
+                # If not bypassing trust check, ignore the message
+                logger.warning(
+                    f"Ignoring message from untrusted neighbor: {sender.name}"
+                )
+                return None
 
         # Get local private key
         private_key, _ = get_generate_key_pair()
+        logger.debug(f"Got local private key {private_key}")
 
         # Decode sender's public key
         sender_public_key_bytes = base64.b64decode(sender_key_base64)
@@ -355,12 +374,16 @@ def receive_secure_message(
         if not isinstance(sender_public_key, x25519.X25519PublicKey):
             logger.error("Invalid sender public key format")
             return None
+        else:
+            logger.info("Successfully retrieved sender's public key")
 
         # Perform key exchange
         shared_key = private_key.exchange(sender_public_key)
+        logger.debug("Performed key exchange")
 
         # Create cipher
         cipher = ChaCha20Poly1305(shared_key[:32])
+        logger.debug("Created cipher")
 
         # Decode nonce and ciphertext
         nonce = base64.b64decode(nonce_base64)
@@ -368,11 +391,15 @@ def receive_secure_message(
 
         # Decrypt the message
         decrypted_data = cipher.decrypt(nonce, ciphertext, None)
+        logger.debug(f"Decrypted data is {decrypted_data}")
 
         # Parse JSON message
         message = json.loads(decrypted_data.decode("utf-8"))
+        logger.debug(f"Parsed JSON is {message}")
 
-        logger.info(f"Successfully decrypted message from {sender.name}")
+        logger.info(
+            f"Successfully decrypted message with public key {sender_key_base64}"
+        )
         return message
 
     except Exception as e:

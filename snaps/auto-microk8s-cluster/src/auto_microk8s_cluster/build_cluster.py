@@ -90,25 +90,26 @@ def build_microk8s_cluster() -> bool:
 
         # As this node has started the cluster formation, it will be the master node
 
-        # Run microk8s add-node command to generate joining info
-        success, output = run_command(["microk8s", "add-node"], timeout=60)
-        if not success:
-            logger.error("Failed to generate cluster joining information")
-            return False
-
-        logger.debug(f"Add-node output: {output}")
-
-        # Extract the join command
-        join_command = extract_join_command(output)
-        if not join_command:
-            return False
-
         # Send the join command to all trusted neighbours
         logger.info(
             f"Sending join command to {len(trusted_neighbours)} trusted neighbours"
         )
 
         for neighbour in trusted_neighbours:
+
+            # Run microk8s add-node command to generate joining info
+            success, output = run_command(["microk8s", "add-node"], timeout=60)
+            if not success:
+                logger.error("Failed to generate cluster joining information")
+                return False
+
+            logger.debug(f"Add-node output: {output}")
+
+            # Extract the join command
+            join_command = extract_join_command(output)
+            if not join_command:
+                return False
+
             # Send join command message
             message: dict[str, Any] = {
                 "type": "cluster_join",

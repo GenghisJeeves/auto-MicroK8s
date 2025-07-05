@@ -329,7 +329,7 @@ def receive_secure_message(
         Decrypted message dictionary or None if failed
     """
     logger.debug(
-        f"Received secure message, Sender Key: {sender_key_base64::16}..., message: {ciphertext_base64[:16]}..."
+        f"Received secure message, Sender Key: {sender_key_base64[:16]}..., message: {ciphertext_base64[:16]}..."
     )
     try:
         # Find the neighbor by public key

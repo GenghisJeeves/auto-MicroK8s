@@ -32,6 +32,7 @@ runcmd:
   - [pipx, ensurepath, --global]
   - [eval, "$(register-python-argcomplete pipx)"]
   - [pipx, install, poetry, --global]
+  - [/usr/local/sbin/poetry-fish-completion]
   - [cd, /opt]
   - [git, clone, https://github.com/GenghisJeeves/auto-MicroK8s.git]
   - [cd, /opt/auto-MicroK8s/snaps/auto-microk8s-cluster]
@@ -135,6 +136,15 @@ write_files:
       echo "☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁☁ \e[0m" >> /etc/issue
       echo -n "\l " >> /etc/issue
     path: /etc/networkd-dispatcher/routable.d/update-issue
+    permissions: "0755"
+  - content: |
+      #!/bin/sh
+      # Set poetry shell completion for fish shell.
+      print "Generating Poetry shell completion for Fish shell..."
+      poetry completions fish > /etc/fish/completions/poetry.fish && \
+      echo "Poetry shell completion for fish shell generated successfully." || \
+      echo "Problem with shell completion generation for Fish shell."
+    path: /usr/local/sbin/poetry-fish-completion
     permissions: "0755"
 
 byobu_by_default: enable
